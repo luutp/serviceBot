@@ -1,0 +1,6 @@
+# Python 2.7
+# Environment
+jupyterlab
+# Computer vision
+opencv-python
+# AI
