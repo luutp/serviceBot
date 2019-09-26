@@ -17,6 +17,7 @@ parts/
 sdist/
 var/
 wheels/
+dataset/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -36,5 +37,6 @@ tf_logs
 #pickle files
 *.pkl
 *.pickle
+*.tar
 #vscode
 .vscode/
