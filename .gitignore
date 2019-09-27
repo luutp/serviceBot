@@ -38,5 +38,8 @@ tf_logs
 *.pkl
 *.pickle
 *.tar
+# pytorch model files
+*.pt 
+*.pth
 #vscode
 .vscode/
