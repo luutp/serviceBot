@@ -8,7 +8,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
-downloads/
+Downloads/
 eggs/
 .eggs/
 lib/
@@ -17,7 +17,6 @@ parts/
 sdist/
 var/
 wheels/
-dataset/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -25,7 +24,6 @@ dataset/
 .ipynb_checkpoints/
 # log files
 *.log
-logs/
 logModels/
 tf_logs
 # media files
