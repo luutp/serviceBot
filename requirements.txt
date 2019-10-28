@@ -22,4 +22,4 @@ seaborn
 # maskRCNN
 # git+https://github.com/matterport/Mask_RCNN.git
 # cocoapi
-# git+https://github.com/cocoapi.git#subdirectory=PythonAPI
+# git+https://github.com/cocodataset/cocoapi.git#subdirectory=PythonAPI
