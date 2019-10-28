@@ -1,0 +1,7 @@
+# Requirements for Computer Vision and serviceBot face tracking project
+# Usage
+# conda install --file requirements_conda.txt
+nodejs
+tensorflow-gpu
+pytorch
+torchvision

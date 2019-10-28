@@ -7,6 +7,8 @@ Created on Mon Jun 17 10:32:04 2019
 # =============================================================================
 # IMPORT PACKAGES
 import inspect, os
+import time
+import logging
 import pkgutil
 import pandas as pd
 # =============================================================================
@@ -18,9 +20,29 @@ def get_varargin(kwargs, inputkey, defaultValue):
         else:
             pass
     return outputVal
-
-def list_modules(input_package):
+# =================================================================================================================
+# DECORATOR
+# timeit
+# Decorator
+def timeit(method):
+    def timed(*args, **kwargs):
+        start_time = time.time()
+        result = method(*args, **kwargs)
+        elapsed_time = (time.time() - start_time)*1000
+        msg = 'DONE: {func_name}.\t' \
+            'Elapsed Time: {elapsed_time:.2f}ms\t'.format(
+            func_name = method.__name__,
+            elapsed_time = elapsed_time)
+        logging.info(msg)
+        return result
+    return timed
+# =================================================================================================================
+def list_modules(input_package, **kwargs):
     mlist = [name for _,name,_ in pkgutil.iter_modules([os.path.dirname(input_package.__file__)])]
+    display_opt = get_varargin(kwargs, 'display', True)
+    if display_opt is True:
+        for m in mlist:
+            print(m)
     return mlist
 
     
@@ -64,3 +86,6 @@ def pickle_data(list_of_var, **kwargs):
     with open(filename, 'wb') as fid:
         for var in list_of_var:
             pickle.dump(var, fid)
+
+if __name__ == '__main__':
+    pass
