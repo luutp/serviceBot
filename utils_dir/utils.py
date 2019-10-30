@@ -88,4 +88,4 @@ def pickle_data(list_of_var, **kwargs):
             pickle.dump(var, fid)
 
 if __name__ == '__main__':
-    pass
+    print('Hello')
