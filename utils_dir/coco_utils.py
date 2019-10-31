@@ -17,11 +17,13 @@ import logging
 import json
 from pathlib import Path
 from tqdm import tqdm
-from skimage import measure, io
-from shapely.geometry import Polygon, MultiPolygon
+from pathlib import Path
+# from skimage import measure, io
+# from shapely.geometry import Polygon, MultiPolygon
 from PIL import Image
 from utils import get_varargin, timeit
 import logger_utils
+
 # =================================================================================================================
 # SETUP
 logger_utils.logging_setup()
@@ -141,11 +143,12 @@ class coco_dataset(object):
         pass
 
 def main():
-    json_obj = coco_json()
-    json_obj.json_filepath = os.path.join(os.path.dirname(script_dir),
-                                        'Downloads\\coco_annotations.json')
-    json_obj.load_json()
-    json_obj.get_info()
+    json_filepath = Path(user_dir) / 'serviceBot/datasets/via_sample/via_export_coco.json'
+    train_imgpath = Path(user_dir) / 'serviceBot/datasets/via_sample/train'
+    coco_obj = coco_dataset(json_filepath = json_filepath, imgpath = train_imgpath)
+    coco_obj.get_info()
+    coco_obj.get_images(display = True)
+    
 # DEBUG
 if __name__ == '__main__':
     main()

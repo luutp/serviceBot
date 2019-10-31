@@ -7,8 +7,8 @@ jupyterlab
 # =================================================================================================================
 # Computer vision and AI
 opencv-python
-#   Python image lib
-PIL
+#   Python image lib, PIL
+Pillow 
 # =================================================================================================================
 # Data analysis
 numpy
@@ -24,6 +24,8 @@ seaborn
 easydict
 google_images_download
 requests
+#   pathlib to deal with path format on different OS
+pathlib
 #   Progress bar
 tqdm
 #   Shapely

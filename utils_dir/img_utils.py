@@ -17,6 +17,7 @@ import time
 from datetime import datetime
 import logging
 import argparse
+import PIL
 #	Data Analytics
 import pandas as pd
 import numpy as np
@@ -31,19 +32,26 @@ from utils import get_varargin
 current_dir = os.getcwd()
 user_dir = os.path.expanduser('~')
 script_dir = os.path.dirname(os.path.abspath(__file__))
-# 	Logging
-logger = logging.getLogger()
-stream_hdl = logging.StreamHandler(sys.stdout)
-file_hdl = logging.FileHandler(os.path.join(current_dir,'logging.log'), mode = 'a')
-formatter = logging.Formatter('%(asctime)s | %(filename)s - %(levelname)s - %(message)s', datefmt='%Y%m%d-%I:%M')
-stream_hdl.setFormatter(formatter)
-logger.addHandler(stream_hdl)
-file_hdl.setFormatter(formatter)
-logger.addHandler(file_hdl)
-logger.setLevel(logging.INFO)
-# Only keep one logger
-for h in logger.handlers[:-2]: 
-    logger.removeHandler(h)
+# =================================================================================================================
+# TRANSFORM
+def img_resize(imgpath, **kwargs):
+    width = get_varargin(kwargs, 'width', None)
+    height = get_varargin(kwargs, 'height', None)
+#    Load image
+    img = PIL.Image.open(imgpath)
+    logging.info('Image path: {}'.format(imgpath))
+    logging.info('Image size: {}'.format(img.size))
+#   Compute new width and height
+    if width is not None:
+        scale_factor = width/img.size[0]
+        height = int((float(img.size[1]) * float(scale_factor)))
+    else:
+        scale_factor = height/img.size[1]
+        width = int((float(img.size[0]) * float(scale_factor)))
+    logging.info('New size: ({}, {})'.format(width,height))
+    img = img.resize((width, height), PIL.Image.ANTIALIAS)
+    img.save(imgpath)
+    
 # =================================================================================================================
 # DEBUG
 if __name__ == '__main__':
