@@ -16,9 +16,8 @@ import inspect, sys
 import time
 from datetime import datetime
 import logging
-import argparse
 #  DL framework
-from tensorflow.python.client import device_lib
+# from tensorflow.python.client import device_lib
 #	Custom packages
 import utils
 from utils import get_varargin
@@ -46,14 +45,14 @@ def logging_setup(**kwargs):
         logger.removeHandler(h)
 # =================================================================================================================
 # LOG HARDWARE
-def logging_hardware(**kwargs):
-    logging.info('Hardware information:')
-    device_list = device_lib.list_local_devices()
-    for device in device_list:
-        logging.info('\t Device type: {}'.format(device.device_type))
-        logging.info('\t Device name: {}'.format(device.name))
-        logging.info('\t Memory Limit: {}(GB)'.format(device.memory_limit/1e9))
-        logging.info('\t Physical Info: {}'.format(device.physical_device_desc))
+# def logging_hardware(**kwargs):
+#     logging.info('Hardware information:')
+#     device_list = device_lib.list_local_devices()
+#     for device in device_list:
+#         logging.info('\t Device type: {}'.format(device.device_type))
+#         logging.info('\t Device name: {}'.format(device.name))
+#         logging.info('\t Memory Limit: {}(GB)'.format(device.memory_limit/1e9))
+#         logging.info('\t Physical Info: {}'.format(device.physical_device_desc))
 
 
 # =================================================================================================================

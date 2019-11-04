@@ -19,6 +19,7 @@ sklearn
 # Visualization
 matplotlib
 seaborn
+scikit-image
 # =================================================================================================================
 # Utilities
 easydict
