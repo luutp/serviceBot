@@ -35,6 +35,7 @@ tf_logs
 *.pkl
 *.pickle
 *.tar
+*.h5
 # pytorch model files
 *.pt 
 *.pth
