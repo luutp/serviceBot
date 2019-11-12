@@ -16,17 +16,21 @@ import inspect, sys
 import time
 from datetime import datetime
 import logging
+from pathlib import Path
 #  DL framework
 # from tensorflow.python.client import device_lib
-#	Custom packages
-import utils
-from utils import get_varargin
 # =================================================================================================================
 # SETUP
 #	Working Directories
 current_dir = os.getcwd()
 user_dir = os.path.expanduser('~')
-script_dir = os.path.dirname(os.path.abspath(__file__))
+filepath = Path(__file__)
+project_dir = os.path.abspath(filepath.parents[1])
+sys.path.append(project_dir)
+#	Custom packages
+from utils_dir.utils import timeit, get_varargin
+# =================================================================================================================
+# DEF
 def logging_setup(**kwargs):
     default_logfile = os.path.join(current_dir, 'logging.log')
     log_file = get_varargin(kwargs, 'log_file', default_logfile)

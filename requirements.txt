@@ -20,6 +20,12 @@ sklearn
 matplotlib
 seaborn
 scikit-image
+#    pydot and graphviz for keras plot_model
+pydot
+graphviz
+# =================================================================================================================
+# FileIO
+pyyaml
 # =================================================================================================================
 # Utilities
 easydict

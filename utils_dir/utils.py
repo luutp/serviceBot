@@ -11,6 +11,8 @@ import time
 import logging
 import pkgutil
 import pandas as pd
+import tqdm
+from pathlib import Path
 # =============================================================================
 def get_varargin(kwargs, inputkey, defaultValue):
     outputVal = defaultValue
@@ -36,6 +38,29 @@ def timeit(method):
         logging.info(msg)
         return result
     return timed
+# =================================================================================================================
+# FILE IO
+@timeit
+def unzip_file(filename, **kwargs):
+    '''
+    unzip file
+    '''
+    output_dir = get_varargin(kwargs, 'output', os.path.dirname(filename))
+    del_zip = get_varargin(kwargs,'remove', True)
+    import zipfile
+    with zipfile.ZipFile(filename, 'r') as fid:
+        fid.extractall(output_dir)
+    if del_zip is True:
+        os.remove(filename)
+# 
+def makedir(inputDir):
+    if not os.path.exists(inputDir):
+        logging.info('Making directory: {}'.format(os.path.abspath(inputDir)))
+        os.makedirs(inputDir)
+    else:
+        logging.info('Directory already exist: {}'.format(os.path.abspath(inputDir)))
+
+
 # =================================================================================================================
 def list_modules(input_package, **kwargs):
     mlist = [name for _,name,_ in pkgutil.iter_modules([os.path.dirname(input_package.__file__)])]
@@ -76,9 +101,7 @@ def print_ndarray(input_mat):
     Args:
         input_mat ([type]): [description]
     """
-    print('\n'.join(['\t'.join(['{:.1f}'.format(item) for item in row]) 
-      for row in input_mat]))
-
+    print('\n'.join(['\t'.join(['{:.1f}'.format(item) for item in row]) for row in input_mat]))
 
 import pickle
 def pickle_data(list_of_var, **kwargs):
@@ -86,6 +109,7 @@ def pickle_data(list_of_var, **kwargs):
     with open(filename, 'wb') as fid:
         for var in list_of_var:
             pickle.dump(var, fid)
-
+# =================================================================================================================
+# DEBUG
 if __name__ == '__main__':
-    print('Hello')
+    logging.info('Hello')
