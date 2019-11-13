@@ -50,8 +50,8 @@ class Config(object):
         RESNET = dict()
         RESNET['FILTERS_C2'] = [64, 64, 256] # Number of filters in resnet stage 2
         RESNET['FILTERS_C3'] = [128, 128, 512]
-        RESNET['FILTERS_C4'] = [512, 512, 1024]
-        RESNET['FILTERS_C5'] = [1024, 1024, 2048]
+        RESNET['FILTERS_C4'] = [256, 256, 1024]
+        RESNET['FILTERS_C5'] = [512, 512, 2048]
         MODEL['RESNET'] = RESNET
         
         # Project path configs

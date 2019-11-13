@@ -56,8 +56,26 @@ config = baseConfig.Config()
 config.MODEL['NAME'] = 'TK_MODEL_NAME_2'
 config.update()
 config.make_fileIO()
+PRE_TRAINED_DIR = script_dir / 'pre_trained'
 
+RESNET_URL = 'https://github.com/keras-team/keras-applications/releases/download/resnet'
+URL_RESNET50 = RESNET_URL + '/resnet50_weights_tf_dim_ordering_tf_kernels.h5'
+URL_RESNET50_NOTOP = RESNET_URL + '/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5'
+URL_RESNET101 = RESNET_URL + '/resnet101_weights_tf_dim_ordering_tf_kernels.h5'
+URL_RESNET101_NOTOP = RESNET_URL + '/resnet101_weights_tf_dim_ordering_tf_kernels_notop.h5'
 # =================================================================================================================
+@timeit
+def download_model_weight(model_url,**kwargs):
+    model_dir = PRE_TRAINED_DIR
+    model_filename = os.path.split(model_url)[1]
+    to_file = get_varargin(kwargs, 'to_file', os.path.join(model_dir, model_filename))
+    if os.path.exists(to_file):
+        logging.info('File exists: {}. Skip downloading'.format(to_file))
+        return 0
+    else:
+        logging.info('Downloading to: {}'.format(to_file))
+        utils.download_url(model_url, to_file)
+        
 def compile_model(**kwargs):
     pass
 
@@ -79,4 +97,4 @@ def main(**kwargs):
 
 # DEBUG
 if __name__ == '__main__':
-    main()
+    download_model_weight(URL_RESNET50_NOTOP)

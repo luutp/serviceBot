@@ -7,12 +7,22 @@ Created on Mon Jun 17 10:32:04 2019
 # =============================================================================
 # IMPORT PACKAGES
 import inspect, os
-import time
-import logging
+import sys
 import pkgutil
-import pandas as pd
-import tqdm
+# FileIO
 from pathlib import Path
+import requests
+#	Utilities
+from tqdm import tqdm
+import time
+from datetime import datetime
+import logging
+# =================================================================================================================
+# Custom packages
+user_dir = os.path.expanduser('~')
+script_dir = Path((__file__)).parents[0]
+project_dir = os.path.abspath(Path((__file__)).parents[1])
+sys.path.append(project_dir)
 # =============================================================================
 def get_varargin(kwargs, inputkey, defaultValue):
     outputVal = defaultValue
@@ -59,8 +69,53 @@ def makedir(inputDir):
         os.makedirs(inputDir)
     else:
         logging.info('Directory already exist: {}'.format(os.path.abspath(inputDir)))
-
-
+# Download file from url
+def download_url(url, to_file):
+    r = requests.get(url, stream=True)
+    # Total size in bytes.
+    total_size = int(r.headers.get('content-length', 0))
+    block_size = 1024 #1 Kibibyte
+    t=tqdm(total=total_size, unit='iB', unit_scale=True)
+    with open(to_file, 'wb') as fid:
+        for data in r.iter_content(block_size):
+            t.update(len(data))
+            fid.write(data)
+    t.close()
+# Select files from input_directory
+def select_files(root_dir, **kwargs):
+    """[summary]
+    
+    Returns:
+        [type] -- [description]
+    """
+    # Input arguments
+    and_key = get_varargin(kwargs, 'and_key', None)
+    or_key = get_varargin(kwargs, 'or_key', None)
+    sel_ext = get_varargin(kwargs, 'ext', 'all')
+    # 
+    def check_andkeys(filename, and_keys):
+        status = True
+        if and_keys is not None and not all(key.lower() in filename.lower() for key in and_keys):
+            status = False
+        return status
+    def check_orkeys(filename, or_keys):
+        status = True
+        if or_keys is not None and not any(key.lower() in filename.lower() for key in or_keys):
+            status = False
+        return status
+    fullfile_list = []
+    for path, subdirs, files in os.walk(root_dir):
+        for name in files:
+            fullfile_list.append(os.path.join(path, name))
+    sel_files = []
+    for fullfile in fullfile_list:        
+        filename,ext = os.path.splitext(os.path.split(fullfile)[1])
+        if set([ext]).issubset(set(sel_ext)) or sel_ext == 'all':
+            and_check = check_andkeys(fullfile, and_key)
+            or_check = check_orkeys(fullfile, or_key)
+            if and_check and or_check:
+                sel_files.append(fullfile)
+    return sel_files
 # =================================================================================================================
 def list_modules(input_package, **kwargs):
     mlist = [name for _,name,_ in pkgutil.iter_modules([os.path.dirname(input_package.__file__)])]
@@ -112,4 +167,5 @@ def pickle_data(list_of_var, **kwargs):
 # =================================================================================================================
 # DEBUG
 if __name__ == '__main__':
-    logging.info('Hello')
+    sel_files = select_files(project_dir, ext = ['.h5', '.yaml'])
+    print(sel_files)
