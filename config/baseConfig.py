@@ -10,6 +10,7 @@ Created on: 2019/11/09
 '''
 # =================================================================================================================
 # IMPORT PACKAGES
+#%%
 from __future__ import print_function
 import os
 import inspect, sys
@@ -35,6 +36,7 @@ from utils_dir import logger_utils as logger
 logger.logging_setup()
 # =================================================================================================================
 # Config base class
+#%%
 class Config(object):
         """
         Base Config class. For custom application, create a sub-class that inherits from this base class
@@ -42,10 +44,10 @@ class Config(object):
         object {[type]} -- [description]
         """
         # Model configs
-        MODEL = dict()
-        MODEL['NAME'] = ''
-        MODEL['FRAMEWORK'] = 'tensorflow'
-        MODEL['BACKBONE'] = 'resnet101'
+        MODEL = edict()
+        MODEL.NAME = ''
+        MODEL.FRAMEWORK = 'tensorflow'
+        MODEL.BACKBONE = 'resnet101'
         # Resnet config
         RESNET = dict()
         RESNET['FILTERS_C2'] = [64, 64, 256] # Number of filters in resnet stage 2
@@ -82,7 +84,6 @@ class Config(object):
         TRAIN['SHUFFLE'] = True
         TRAIN['PRINT_FREQ'] = 100 # Frequency to display training process
         # Test configs
-        
         # config
         config = dict()
         config['HARDWARE'] = HARDWARE
@@ -123,27 +124,33 @@ class Config(object):
                 with open(yaml_filename) as fid:
                         config = yaml.full_load(fid)
                 return config
-
 # =================================================================================================================
 # main
 def main():
         config_obj = Config()
-        # config_obj. MODEL.NAME = 'resnet50'
+        # # config_obj. MODEL.NAME = 'resnet50'
+        config_obj.MODEL.NAME = 'resnet50'
         yaml_filepath = script_dir / 'base_config.yaml'
-        # Make yaml file
+        # # Make yaml file
         config_obj.make_yaml_file(yaml_filepath)
-        logging.info('Config yaml file is created: {}'.format(yaml_filepath))        
-# =================================================================================================================
-# DEBUG
-if __name__ == '__main__':
-        config_obj = Config()
+        # logging.info('Config yaml file is created: {}'.format(yaml_filepath))        
+        # config_obj = Config()
         # config_obj. MODEL.NAME = 'resnet50'
-        yaml_filepath = script_dir / 'base_config.yaml'
+        # yaml_filepath = script_dir / 'base_config.yaml'
         # Make yaml file
-        config_obj.make_yaml_file(yaml_filepath)
-        logging.info('Config yaml file is created: {}'.format(yaml_filepath))
+        # config_obj.make_yaml_file(yaml_filepath)
+        # logging.info('Config yaml file is created: {}'.format(yaml_filepath))
         # Load yaml file
-        # config = config_obj.load_yaml_file(yaml_filepath)
+        # temp = config_obj.load_yaml_file(yaml_filepath)
+        # config = edict(temp)
+        # print(config)
+        # print(type(config))
         # for key, val in config.items():
         #         print(key, val)
         # print(config.MODEL)
+        # print(config.MODEL)
+# =================================================================================================================
+# DEBUG
+#%%
+if __name__ == '__main__':
+        main()

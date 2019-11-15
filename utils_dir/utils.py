@@ -69,8 +69,16 @@ def makedir(inputDir):
         os.makedirs(inputDir)
     else:
         logging.info('Directory already exist: {}'.format(os.path.abspath(inputDir)))
+        
 # Download file from url
-def download_url(url, to_file):
+@timeit
+def download_url(url, to_file, **kwargs):
+    skip_on_avai = get_varargin(kwargs, 'skip_on_avai', True)
+    if skip_on_avai is True:
+        if os.path.exists(to_file):
+            logging.info('File exists: {}. Skip downloading'.format(to_file))
+            return -1
+    logging.info('Downloading to: {}'.format(to_file))
     r = requests.get(url, stream=True)
     # Total size in bytes.
     total_size = int(r.headers.get('content-length', 0))
@@ -81,12 +89,18 @@ def download_url(url, to_file):
             t.update(len(data))
             fid.write(data)
     t.close()
+    print('\n')
+    
 # Select files from input_directory
 def select_files(root_dir, **kwargs):
-    """[summary]
-    
+    """
+    Select files in root_directory
+    Options:
+        and_key -- list. list of keys for AND condition. Default: None
+        or_key -- list. List of keys for OR condition. Default: None
+        ext -- str. File extension. Default: 'all'
     Returns:
-        [type] -- [description]
+        [list] -- list of selected files
     """
     # Input arguments
     and_key = get_varargin(kwargs, 'and_key', None)
@@ -125,7 +139,6 @@ def list_modules(input_package, **kwargs):
             print(m)
     return mlist
 
-    
 def get_obj_params(obj):
     '''
     Get names and values of all parameters in `obj`'s __init__
