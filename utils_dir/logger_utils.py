@@ -16,8 +16,9 @@ from __future__ import print_function
 import os
 import inspect, sys
 import platform
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, check_output, STDOUT
 # FileIO
+import json
 from pathlib import Path
 # Computations
 import math
@@ -151,6 +152,14 @@ def getGPUs():
         GPUs.append(GPU(deviceIds, uuid, gpuUtil, memTotal, memUsed, memFree, driver, gpu_name, serial, display_mode, display_active, temp_gpu))
     return GPUs  # (deviceIds, gpuUtil, memUtil)
 
+def log_nvidia_smi_info():
+    try:
+        info = check_output(["nvidia-smi"], stderr = STDOUT)
+        info = info.decode("utf8")
+    except Exception as e:
+        info = "Executing nvidia-smi failed: " + str(e)
+    return info.strip()
+
 def logGPU_usage():
     GPUs = getGPUs()
     logging.info('GPUs Usage Profile:')
@@ -171,6 +180,18 @@ def logGPU_usage():
             gpu.memoryUsed,
             gpu.memoryTotal))
 
+def log_json_stats(stats, sort_keys=True):
+    # hack to control precision of top-level floats
+    stats = {
+        k: '{:.6f}'.format(v) if isinstance(v, float) else v
+        for k, v in stats.items()
+    }
+    print('json_stats: {:s}'.format(json.dumps(stats, sort_keys=sort_keys)))
+
+check = edict()
+check.a = 'a'
+check.b = 'b'
+log_json_stats(check)
 #%%
 # =================================================================================================================
 # DEBUG

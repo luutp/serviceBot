@@ -1,0 +1,13 @@
+!!python/object/new:__main__.AttrDict
+dictitems:
+  TRAIN: !!python/object/new:__main__.AttrDict
+    dictitems:
+      DATASETS: !!python/tuple []
+      MAX_SIZE: 1000
+      SCALES: !!python/tuple
+      - 600
+      WEIGHTS: ''
+    state:
+      __immutable__: false
+state:
+  __immutable__: false

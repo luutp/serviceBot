@@ -125,6 +125,7 @@ def set_log_dir(**kwargs):
     pass
 
 def train_model(model, **kwargs):
+    logger.log_nvidia_smi_info()
     log_dir = get_varargin(kwargs, 'log_dir', config.FILEIO['LOG_DIR'])
     model_name = config.MODEL['NAME'].lower()
     default_checkpoint = Path(log_dir) / '{}_ckpts.h5'.format(model_name)
@@ -144,6 +145,7 @@ def train_model(model, **kwargs):
 # =================================================================================================================
 # MAIN
 def main(**kwargs):
+    
     model = mnist_model(num_classes=10)
     model.summary()
     model.compile(loss=keras.losses.categorical_crossentropy,
