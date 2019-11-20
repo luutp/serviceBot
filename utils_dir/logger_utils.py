@@ -187,16 +187,12 @@ def log_json_stats(stats, sort_keys=True):
         for k, v in stats.items()
     }
     print('json_stats: {:s}'.format(json.dumps(stats, sort_keys=sort_keys)))
-
-check = edict()
-check.a = 'a'
-check.b = 'b'
-log_json_stats(check)
 #%%
 # =================================================================================================================
 # DEBUG
 if __name__ == '__main__':
     logging_setup()
     logging.info('Hello!')
-    # logging_setup()
+    logging_setup()
     # logging_hardware()
+    logGPU_usage()
