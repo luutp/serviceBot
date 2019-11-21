@@ -68,7 +68,7 @@ def makedir(inputDir):
         logging.info('Making directory: {}'.format(os.path.abspath(inputDir)))
         os.makedirs(inputDir)
     else:
-        logging.info('Directory already exist: {}'.format(os.path.abspath(inputDir)))
+        logging.info('mkdir: Directory already exist: {}'.format(os.path.abspath(inputDir)))
         
 # Download file from url
 @timeit
