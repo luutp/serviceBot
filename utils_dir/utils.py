@@ -17,6 +17,7 @@ from tqdm import tqdm
 import time
 from datetime import datetime
 import logging
+import re # for ProgressBar
 # =================================================================================================================
 # Custom packages
 user_dir = os.path.expanduser('~')
@@ -39,12 +40,18 @@ def get_varargin(kwargs, inputkey, defaultValue):
 def timeit(method):
     def timed(*args, **kwargs):
         start_time = time.time()
+        logging.info('START: {}'.format(method.__name__))
         result = method(*args, **kwargs)
-        elapsed_time = (time.time() - start_time)*1000
+        elapsed_time = (time.time() - start_time)
+        
+        hours, rem = divmod(elapsed_time, 3600)
+        minutes, seconds = divmod(rem, 60)
+
         msg = 'DONE: {func_name}.\t' \
-            'Elapsed Time: {elapsed_time:.2f}ms\t'.format(
+            'Elapsed Time: {hours:0>2}:{mins:0>2}:{secs:0>2}\t'.format(
             func_name = method.__name__,
-            elapsed_time = elapsed_time)
+            hours = int(hours), mins = int(minutes), secs = int(seconds))
+        
         logging.info(msg)
         return result
     return timed
@@ -90,7 +97,41 @@ def download_url(url, to_file, **kwargs):
             fid.write(data)
     t.close()
     print('\n')
-    
+
+class ProgressBar(object):
+    def __init__(self, total,  **kwargs):
+        width = get_varargin(kwargs, 'width', 40)
+        title = get_varargin(kwargs, 'title', 'Progress')
+        symbol = get_varargin(kwargs, 'symbol', '=')
+        printer = get_varargin(kwargs, 'printer', 'stdout')
+        
+        assert len(symbol) == 1
+        fmt = '{}: %(current)03d/%(total)03d %(bar)s  (%(percent)3d%%)'.format(title)
+        self.total = total
+        self.width = width
+        self.symbol = symbol
+        self.printer = printer
+        self.fmt = re.sub(r'(?P<name>%\(.+?\))d',
+            r'\g<name>%dd' % len(str(total)), fmt)
+        self.current = 0
+
+    def __call__(self):
+        percent = self.current / float(self.total)
+        size = int(self.width * percent)
+        remaining = self.total - self.current
+        bar = '[' + self.symbol * size + ' ' * (self.width - size) + ']'
+        args = {
+            'total': self.total,
+            'bar': bar,
+            'current': self.current,
+            'percent': percent * 100,
+            'remaining': remaining
+        }
+        if self.printer == 'stdout':
+            print('\r' + self.fmt % args,  end='')
+        else:
+            logging.info(self.fmt % args)
+
 # Select files from input_directory
 def select_files(root_dir, **kwargs):
     """
@@ -105,7 +146,7 @@ def select_files(root_dir, **kwargs):
     # Input arguments
     and_key = get_varargin(kwargs, 'and_key', None)
     or_key = get_varargin(kwargs, 'or_key', None)
-    sel_ext = get_varargin(kwargs, 'ext', 'all')
+    sel_ext = get_varargin(kwargs, 'ext', ['all'])
     # 
     def check_andkeys(filename, and_keys):
         status = True
@@ -123,8 +164,8 @@ def select_files(root_dir, **kwargs):
             fullfile_list.append(os.path.join(path, name))
     sel_files = []
     for fullfile in fullfile_list:        
-        filename,ext = os.path.splitext(os.path.split(fullfile)[1])
-        if set([ext]).issubset(set(sel_ext)) or sel_ext == 'all':
+        filename, ext = os.path.splitext(os.path.split(fullfile)[1])
+        if set([ext]).issubset(set(sel_ext)) or sel_ext[0] == 'all':
             and_check = check_andkeys(fullfile, and_key)
             or_check = check_orkeys(fullfile, or_key)
             if and_check and or_check:

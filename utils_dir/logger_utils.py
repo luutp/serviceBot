@@ -23,11 +23,12 @@ from pathlib import Path
 # Computations
 import math
 import random
-
+# Utils
 from distutils import spawn
 import time
 from datetime import datetime
 import logging
+import psutil
 #  DL framework
 from tensorflow.python.client import device_lib
 # =================================================================================================================
@@ -49,7 +50,7 @@ def logging_setup(**kwargs):
     logger = logging.getLogger()
     stream_hdl = logging.StreamHandler(sys.stdout)
     file_hdl = logging.FileHandler(log_file, mode = 'a')
-    formatter = logging.Formatter('%(asctime)s | %(filename)s - %(levelname)s - %(message)s', datefmt='%Y%m%d-%I:%M')
+    formatter = logging.Formatter('%(asctime)s|%(filename)s|%(levelname)s| %(message)s', datefmt='%y%m%d-%I:%M')
     stream_hdl.setFormatter(formatter)
     logger.addHandler(stream_hdl)
     file_hdl.setFormatter(formatter)
@@ -160,6 +161,18 @@ def log_nvidia_smi_info():
         info = "Executing nvidia-smi failed: " + str(e)
     return info.strip()
 
+def logPC_usage():
+    cpu_usage = psutil.cpu_percent(percpu=True)
+    ram_info = psutil.virtual_memory()
+    total_ram = ram_info[0]/1e9
+    used_ram = ram_info[3]/1e9
+    percent_ram = ram_info[2]
+    
+    logging.info('CPU Info: Used {}%'.format(cpu_usage))
+    logging.info('RAM Info: Used [{:.1f}] / Total[{:.1f}](GB)'\
+        '. Percent: {:.1f}%'\
+            .format(used_ram, total_ram, percent_ram))
+    
 def logGPU_usage():
     GPUs = getGPUs()
     logging.info('GPUs Usage Profile:')
@@ -187,6 +200,12 @@ def log_json_stats(stats, sort_keys=True):
         for k, v in stats.items()
     }
     print('json_stats: {:s}'.format(json.dumps(stats, sort_keys=sort_keys)))
+    
+def log_train_time(duration):
+    hours, rem = divmod(duration, 3600)
+    minutes, seconds = divmod(rem, 60)
+    logging.info("Total Training Time: {:0>2}:{:0>2}:{:0>2}".format(int(hours),int(minutes),int(seconds)))
+
 #%%
 # =================================================================================================================
 # DEBUG

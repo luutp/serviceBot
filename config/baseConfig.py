@@ -47,16 +47,23 @@ def model_config():
     MODEL.NAME = ''
     MODEL.FRAMEWORK = 'tensorflow'
     MODEL.BACKBONE = 'resnet101'
-    
+    # Resnet Config
     RESNET = edict()
     RESNET.FILTERS_C2 = [64, 64, 256] # Number of filters in resnet stage 2
     RESNET.FILTERS_C3 = [128, 128, 512]
     RESNET.FILTERS_C4 = [256, 256, 1024]
     RESNET.FILTERS_C5 = [512, 512, 2048]
-    
     MODEL.RESNET = RESNET
     
+    # Model URL
+    RESNET_URL = 'https://github.com/keras-team/keras-applications/releases/download/resnet'
+    MODEL.URL_RESNET50 = RESNET_URL + '/resnet50_weights_tf_dim_ordering_tf_kernels.h5'
+    MODEL.URL_RESNET50_NOTOP = RESNET_URL + '/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5'
+    MODEL.URL_RESNET101 = RESNET_URL + '/resnet101_weights_tf_dim_ordering_tf_kernels.h5'
+    MODEL.URL_RESNET101_NOTOP = RESNET_URL + '/resnet101_weights_tf_dim_ordering_tf_kernels_notop.h5'
+    
     return MODEL
+
 
 def fileIO_config(**kwargs):
     """
@@ -67,17 +74,18 @@ def fileIO_config(**kwargs):
     """
     project_name = get_varargin(kwargs, 'project', 'serviceBot')
     FILEIO = edict()
+    # Directories
     FILEIO.PROJECT_DIR = os.path.join(user_dir, project_name)
     FILEIO.LOG_DIR = os.path.join(FILEIO.PROJECT_DIR, 'logs')
+    FILEIO.PRE_TRAINED_DIR = os.path.join(FILEIO.PROJECT_DIR, 'train/pre_trained')
     FILEIO.DATASET_DIR = os.path.join(FILEIO.PROJECT_DIR, 'datasets')
     # files
     FILEIO.YAML_CONFIG = os.path.join(current_dir, 'base_config.yaml')
     # Make dirs
-    for ipath in [FILEIO.LOG_DIR, FILEIO.DATASET_DIR]:
+    for ipath in [FILEIO.LOG_DIR, FILEIO.DATASET_DIR, FILEIO.PRE_TRAINED_DIR]:
         utils.makedir(ipath)
     
     return FILEIO
-    
 
 def train_config():
     # Train configs
@@ -97,11 +105,11 @@ def train_config():
     TRAIN.LEARNING_RATE = 0.001 # Learning rate
     TRAIN.LEARNING_MOMENTUM = 0.9
     TRAIN.LEARNING_WEIGHT_DECAY = 0.0001 # Weight decay regularization
-    TRAIN.NB_EPOCH = 10
+    TRAIN.NB_EPOCHS = 10
     TRAIN.BATCH_SIZE = 32
     TRAIN.RESUME = False
     TRAIN.SHUFFLE = True
-    TRAIN.PRINT_FREQ = 100 # Frequency to display training process
+    TRAIN.PRINT_FREQ = 1 # Frequency to display training process
     
     return TRAIN
 
@@ -127,16 +135,13 @@ def base_config():
     return cfg
     
 def update_config(to_dict, from_dict):
+    pass
     # if str(from_dict) in to_dict.keys():
     #     to_dict.update(from_dict)
     # else:
     #     to_dict. = from_dict
     # for key, val in from_dict.items():
     #     print(key, val)
-
-def add_to_config(cfg, new_edict):
-    cfg[new_edict.__name__] = new_edict
-    return cfg
 
 # Make yaml file
 def make_yaml_file(config, yaml_filename):

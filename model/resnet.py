@@ -49,10 +49,10 @@ sys.path.append(project_dir)
 from utils_dir import utils
 from utils_dir.utils import timeit, get_varargin
 from utils_dir import logger_utils as logger
-from config.baseConfig import Config
+from config import baseConfig
 logger.logging_setup()
 # DEFINE
-config = Config()
+config = baseConfig.base_config()
 # =================================================================================================================
 # RESNET RELATED
 def identity_block(x, **kwargs):
@@ -73,13 +73,14 @@ def identity_block(x, **kwargs):
     block_id = get_varargin(kwargs, 'block_id', 1)
     
     if stage == 2:
-        filters = config.MODEL['RESNET']['FILTERS_C2']
+        filters = config.MODEL.RESNET.FILTERS_C2
     elif stage == 3:
-        filters = config.MODEL['RESNET']['FILTERS_C3']
+        filters = config.MODEL.RESNET.FILTERS_C3
     elif stage == 4:
-        filters = config.MODEL['RESNET']['FILTERS_C4']
+        filters = config.MODEL.RESNET.FILTERS_C4
     else:
-        filters = config.MODEL['RESNET']['FILTERS_C5']
+        filters = config.MODEL.RESNET.FILTERS_C5
+        
     filters1, filters2, filters3 = filters
     bn_axis = 3 # Channel last, tensorflow backend
     prefix_blockname = 'C{}_branch2_blk{}_'.format(stage, block_id)    
@@ -170,10 +171,12 @@ def ResNet50(input_tensor=None,
     return model
 # =================================================================================================================
 # MAIN
+#%%
 def main():
     model = ResNet50()
     utils.show_obj_params(model)
-    # model.summary()  
+    model.summary()
+# main()
 # =================================================================================================================
 # DEBUG
 #%%

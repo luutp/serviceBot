@@ -9,6 +9,10 @@ PIP_REQUIREMENTS=~/serviceBot/env/requirements.txt
 sudo usermod -aG sudo $USER
 ## Downloads
 sudo apt-get install -y wget
+# Install Nvidia driver
+sudo apt-add-repository ppa:graphics-drivers/ppa
+sudo apt-get update
+sudo apt-get install -y nvidia-418
 ## Download Anaconda
 FILE=$DOWNLOAD_DIR/$CONDA_FILENAME
 if [ -f "$FILE" ]; then
