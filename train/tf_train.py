@@ -8,7 +8,6 @@ Author: PhatLuu
 Contact: tpluu2207@gmail.com
 Created on: 2019/11/11
 '''
-#%%
 # =================================================================================================================
 # IMPORT PACKAGES
 from __future__ import print_function
@@ -59,16 +58,16 @@ from utils_dir.utils import timeit, get_varargin, ProgressBar
 from utils_dir import logger_utils as logger
 from model import resnet as resnet_utils
 # from datasets import mnist
-from config import baseConfig
+from config.baseConfig import cfg
+
 logger.logging_setup()
 # =================================================================================================================
 # DEFINES
 timenow = datetime.now().strftime('%Y%m%d_%H%M')
-cfg = baseConfig.base_config()
 cfg.MODEL.NAME = 'mnist_model'
-cfg.TRAIN.NB_EPOCHS = 6
+cfg.TRAIN.NB_EPOCHS = 10
 cfg.TRAIN.STEPS_PER_EPOCH = 500
-cfg.TRAIN.PROFILING_FREQ = 2
+cfg.TRAIN.PROFILING_FREQ = cfg.TRAIN.NB_EPOCHS - 1
 # =================================================================================================================
 #%%
 def download_model_weight(model_url,**kwargs):
@@ -131,10 +130,16 @@ class profiling_Callback(tf.keras.callbacks.Callback):
         self.nb_epochs = get_varargin(kwargs, 'epochs', cfg.TRAIN.NB_EPOCHS)
         self.steps_per_epoch =  get_varargin(kwargs, 'steps_per_epoch', cfg.TRAIN.STEPS_PER_EPOCH)        
         self.profiling_freq =  get_varargin(kwargs, 'profiling_freq', cfg.TRAIN.PROFILING_FREQ) 
-        self.progress = ProgressBar(self.nb_epochs, title = 'Epoch', 
-                                    symbol = '=', printer = 'logger')
         self.batchbar = ProgressBar(self.steps_per_epoch, title= 'Batch',
                                     printer = 'stdout')
+        
+    def on_train_begin(self, logs = None):
+        end_epoch = self.params['epochs']
+        start_epoch = end_epoch - self.nb_epochs
+        self.progress = ProgressBar(end_epoch,
+                                    title = 'Progress', 
+                                    start = start_epoch,
+                                    symbol = '=', printer = 'logger')
         
     def on_train_batch_end(self, batch, logs=None):
         self.batchbar.current += 1
@@ -155,32 +160,36 @@ class profiling_Callback(tf.keras.callbacks.Callback):
             logger.logPC_usage()
             logger.logGPU_usage()
 
-def train_init(**kwargs):
+def train_init(model, **kwargs):
     model_name = get_varargin(kwargs, 'model_name', cfg.MODEL.NAME)
     retrain = get_varargin(kwargs, 'retrain', True)
+    logging.info('Retrain Model: {}'.format(retrain))
     init_epoch = 0
     if retrain is False: # Train from scratch
         prefix = datetime.now().strftime('%y%m%d_%H%M') 
         ckpts_logdir = os.path.join(cfg.FILEIO.LOG_DIR, '{}-{}-ckpts'\
             .format(prefix, model_name))
         utils.makedir(ckpts_logdir)
-        # cfg.TRAIN.LOG_DIR = 
+        model = model
     else:
         last_model = get_last_model()
         ckpts_logdir = os.path.dirname(last_model)
         filename = os.path.splitext(Path(last_model).name)[0]
         init_epoch = int(filename[-3:])
-    return ckpts_logdir, init_epoch
+        logging.info('Model Checkpoint: {}'.format(ckpts_logdir))
+        logging.info('Load model weights from: {}'.format(Path(last_model).name))
+        model.load_weights(last_model)
+    return model, ckpts_logdir, init_epoch
 
 @timeit
 def train_model(model, **kwargs):
     logger.log_nvidia_smi_info()
-    log_dir = get_varargin(kwargs, 'log_dir', cfg.FILEIO.LOG_DIR)
-    # model_name = cfg.MODEL.NAME.lower()
-    ckpts_filename = 'mnist_model_ckpts-{epoch:03d}.h5'
-    
-    ckpts_logdir, init_epoch = train_init(retrain = False)
+    ckpts_filename = cfg.MODEL.NAME.lower() + '_ckpts{epoch:03d}.h5'
+    hist_filename = '{}_hist.csv'.format(cfg.MODEL.NAME.lower())
+    retrain_opt = True
+    model, ckpts_logdir, start_epoch = train_init(model, retrain = retrain_opt)
     ckpts_filepath = os.path.join(ckpts_logdir, ckpts_filename)
+    hist_filepath = os.path.join(ckpts_logdir, hist_filename)
     # default_checkpoint = os.path.join(log_dir, '{}_ckpts.h5'.format(model_name))
     # checkpoint_path = get_varargin(kwargs, 'checkpoint', default_checkpoint)
     # Callbacks
@@ -193,11 +202,13 @@ def train_model(model, **kwargs):
     checkpoint_callback = keras.callbacks.ModelCheckpoint(ckpts_filepath, 
                                         verbose = 1, 
                                         monitor = 'loss',
+                                        mode = 'min',
                                         save_best_only = True,
-                                        save_weights_only=True,
-                                        mode = 'min')
-    
-    logging_callback = profiling_Callback(profiling_freq = cfg.TRAIN.NB_EPOCHS-1)
+                                        save_weights_only=True)
+    csvlog_callback = keras.callbacks.CSVLogger(hist_filepath,
+                                                append = True)
+    logging_callback = profiling_Callback(profiling_freq = cfg.TRAIN.PROFILING_FREQ)
+    callbacks = [checkpoint_callback, csvlog_callback,logging_callback]
     # callbacks = [tfboard_callback, checkpoint_callback]
     # Parallel model
     # tf.compat.v1.disable_eager_execution()
@@ -206,8 +217,8 @@ def train_model(model, **kwargs):
         # model = model
     # with tf.device("/device:CPU:0"):
     #     model = model
-    model = tf.compat.v1.keras.utils.multi_gpu_model(model, gpus = cfg.TRAIN.NB_GPUS,
-                                        cpu_merge = True)
+    # model = tf.compat.v1.keras.utils.multi_gpu_model(model, gpus = cfg.TRAIN.NB_GPUS,
+    #                                     cpu_merge = True)
 
     # keras.utils.multi_gpu_model()
     model.compile(loss = keras.losses.categorical_crossentropy,
@@ -215,7 +226,6 @@ def train_model(model, **kwargs):
             metrics= ['accuracy'])
         
     # callbacks = [checkpoint_callback]
-    callbacks = [checkpoint_callback, logging_callback]
     # X_train, y_train, X_test, y_test = mnist.get_mnist()
     # input image dimensions
     img_rows, img_cols = 28, 28
@@ -241,8 +251,8 @@ def train_model(model, **kwargs):
     y_test = keras.utils.to_categorical(y_test, num_classes)
     model.fit(X_train,y_train,
             steps_per_epoch = cfg.TRAIN.STEPS_PER_EPOCH,
-            initial_epoch = init_epoch,
-            epochs = cfg.TRAIN.NB_EPOCHS,
+            initial_epoch = start_epoch,
+            epochs = start_epoch + cfg.TRAIN.NB_EPOCHS,
             verbose = 0,
             validation_data = (X_test, y_test),
             callbacks = callbacks,
@@ -265,8 +275,9 @@ def main(**kwargs):
     # model.add(KL.Dropout(0.5))
     # model.add(KL.Dense(num_classes, activation='softmax'))
     # model.summary()
-    with tf.device("/device:CPU:0"):
-        model = mnist_model(num_classes = num_classes)
+    # with tf.device("/device:CPU:0"):
+    model = mnist_model(num_classes = num_classes)
+    model.summary()
     train_model(model)
     # Load mnist data
 # main()

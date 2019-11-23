@@ -133,7 +133,9 @@ def base_config():
     cfg.FILEIO = fileIO_config()
     cfg.TRAIN = train_config()
     return cfg
-    
+
+cfg = base_config()
+
 def update_config(to_dict, from_dict):
     pass
     # if str(from_dict) in to_dict.keys():
@@ -156,7 +158,9 @@ def load_yaml_file(yaml_filename):
     with open(yaml_filename) as fid:
         config = yaml.full_load(fid)
     return config
-
+# Utils
+def print_config(cfg):
+    json.dumps(cfg, indent = 4)
 # cfg = base_config()
 # print(cfg.MODEL.FRAMEWORK)
 # TEST = edict()

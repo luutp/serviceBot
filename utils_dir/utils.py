@@ -6,12 +6,15 @@ Created on Mon Jun 17 10:32:04 2019
 """
 # =============================================================================
 # IMPORT PACKAGES
+#%%
 import inspect, os
 import sys
 import pkgutil
 # FileIO
 from pathlib import Path
 import requests
+import json
+import h5py
 #	Utilities
 from tqdm import tqdm
 import time
@@ -104,6 +107,7 @@ class ProgressBar(object):
         title = get_varargin(kwargs, 'title', 'Progress')
         symbol = get_varargin(kwargs, 'symbol', '=')
         printer = get_varargin(kwargs, 'printer', 'stdout')
+        start = get_varargin(kwargs, 'start', 0)
         
         assert len(symbol) == 1
         fmt = '{}: %(current)03d/%(total)03d %(bar)s  (%(percent)3d%%)'.format(title)
@@ -113,7 +117,7 @@ class ProgressBar(object):
         self.printer = printer
         self.fmt = re.sub(r'(?P<name>%\(.+?\))d',
             r'\g<name>%dd' % len(str(total)), fmt)
-        self.current = 0
+        self.current = start
 
     def __call__(self):
         percent = self.current / float(self.total)
@@ -200,9 +204,22 @@ def show_obj_params(obj):
         print('{} : {} '.format(key, val))
 
 
-def display_dict(input):
-    for key, val in input.items():
-        print(key, ":", val)
+def print_dict(input_dict):
+    print(json.dumps(input_dict, indent = 2))
+    # for key, val in input.items():
+    #     print(key, ":", val)
+
+
+from train import tf_train
+def print_h5(filename):
+    with h5py.File(filename, 'r') as fid:
+        print("Keys: %s" % fid.keys())
+        a_group_key = list(fid.keys())[0]
+        # Get the data
+        for key, val in fid.items():
+            print(key,val)
+            print(list(val))
+#%%
 
 def print_ndarray(input_mat):
     """Print ndarray in python as matrix in Matlab
