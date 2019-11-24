@@ -206,6 +206,7 @@ def log_train_time(duration):
     minutes, seconds = divmod(rem, 60)
     logging.info("Total Training Time: {:0>2}:{:0>2}:{:0>2}".format(int(hours),int(minutes),int(seconds)))
 
+
 #%%
 # =================================================================================================================
 # DEBUG

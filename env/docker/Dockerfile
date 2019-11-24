@@ -10,10 +10,11 @@ LABEL Name=servicebot Version=0.0.1
 LABEL Maintainer = "Trieu Phat Luu <tpluu2207 at gmail>"
 EXPOSE 3000
 
+RUN echo "hello"
 # Clone the Detectron repository
-RUN git clone https://github.com/trieuphatluu/serviceBot /servicebot
+# RUN git clone https://github.com/trieuphatluu/serviceBot /servicebot
 # Pip install
-RUN pip install -r /serviceBot/env/requirements.txt
+# RUN pip install -r /serviceBot/env/requirements.txt
 
 # WORKDIR /app
 # ADD . /app

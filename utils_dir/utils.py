@@ -203,23 +203,10 @@ def show_obj_params(obj):
     for key, val in zip(obj.__dict__.keys(), obj.__dict__.values()):
         print('{} : {} '.format(key, val))
 
-
 def print_dict(input_dict):
     print(json.dumps(input_dict, indent = 2))
     # for key, val in input.items():
     #     print(key, ":", val)
-
-
-from train import tf_train
-def print_h5(filename):
-    with h5py.File(filename, 'r') as fid:
-        print("Keys: %s" % fid.keys())
-        a_group_key = list(fid.keys())[0]
-        # Get the data
-        for key, val in fid.items():
-            print(key,val)
-            print(list(val))
-#%%
 
 def print_ndarray(input_mat):
     """Print ndarray in python as matrix in Matlab

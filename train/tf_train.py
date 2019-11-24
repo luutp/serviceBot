@@ -10,6 +10,7 @@ Created on: 2019/11/11
 '''
 # =================================================================================================================
 # IMPORT PACKAGES
+#%%
 from __future__ import print_function
 import os
 import inspect, sys
@@ -18,6 +19,8 @@ import argparse
 import json
 from pathlib import Path
 import h5py
+from contextlib import redirect_stdout
+
 #	Data Analytics
 import pandas as pd
 import numpy as np
@@ -58,18 +61,19 @@ from utils_dir.utils import timeit, get_varargin, ProgressBar
 from utils_dir import logger_utils as logger
 from model import resnet as resnet_utils
 # from datasets import mnist
-from config.baseConfig import cfg
+from config.baseConfig import base_config
 
 logger.logging_setup()
 # =================================================================================================================
 # DEFINES
 timenow = datetime.now().strftime('%Y%m%d_%H%M')
+cfg = base_config()
 cfg.MODEL.NAME = 'mnist_model'
-cfg.TRAIN.NB_EPOCHS = 10
-cfg.TRAIN.STEPS_PER_EPOCH = 500
+cfg.TRAIN.NB_EPOCHS = 4
+cfg.TRAIN.STEPS_PER_EPOCH = 1000
 cfg.TRAIN.PROFILING_FREQ = cfg.TRAIN.NB_EPOCHS - 1
+cfg.TRAIN.MAX_CKPTS_FILES = 10
 # =================================================================================================================
-#%%
 def download_model_weight(model_url,**kwargs):
     """
     Download pre-trained model weight .h5 from url
@@ -82,8 +86,6 @@ def download_model_weight(model_url,**kwargs):
     to_file = get_varargin(kwargs, 'to_file', os.path.join(model_dir, model_filename))
     # Start downloading
     utils.download_url(model_url, to_file)
-
-# download_model_weight(cfg.MODEL.URL_RESNET50)
 
 def compile_model(**kwargs):
     pass
@@ -116,8 +118,6 @@ def get_last_model(**kwargs):
     file_list = utils.select_files(model_dir, ext = ['.h5'])
     return sorted(file_list)[-1]
 
-#%%
-
 def load_model(**kwargs):
     pass
 
@@ -134,11 +134,11 @@ class profiling_Callback(tf.keras.callbacks.Callback):
                                     printer = 'stdout')
         
     def on_train_begin(self, logs = None):
-        end_epoch = self.params['epochs']
-        start_epoch = end_epoch - self.nb_epochs
-        self.progress = ProgressBar(end_epoch,
-                                    title = 'Progress', 
-                                    start = start_epoch,
+        self.end_epoch = self.params['epochs']
+        self.start_epoch = self.end_epoch - self.nb_epochs
+        self.progress = ProgressBar(self.end_epoch,
+                                    title = 'Epoch', 
+                                    start = self.start_epoch,
                                     symbol = '=', printer = 'logger')
         
     def on_train_batch_end(self, batch, logs=None):
@@ -156,9 +156,20 @@ class profiling_Callback(tf.keras.callbacks.Callback):
             .format(logs['loss'], logs['accuracy'],
                     logs['val_loss'], logs['val_accuracy'],
                     ))
-        if (epoch) % self.profiling_freq == 0:
+        if (epoch-self.start_epoch) % self.profiling_freq == 0:
             logger.logPC_usage()
             logger.logGPU_usage()
+        
+        # Delete ckpts file, only keep n-latest files
+        ckpts_dir = os.path.dirname(get_last_model())
+        ckpts_filelist = sorted(utils.select_files(ckpts_dir,
+                                                   and_key = ['ckpts','h5'])
+                                , reverse = True)
+        if len(ckpts_filelist) > cfg.TRAIN.MAX_CKPTS_FILES:
+            for f in ckpts_filelist[cfg.TRAIN.MAX_CKPTS_FILES:]:
+                print('Remove : {}'.format(f))
+                os.remove(f)
+                                
 
 def train_init(model, **kwargs):
     model_name = get_varargin(kwargs, 'model_name', cfg.MODEL.NAME)
@@ -184,7 +195,7 @@ def train_init(model, **kwargs):
 @timeit
 def train_model(model, **kwargs):
     logger.log_nvidia_smi_info()
-    ckpts_filename = cfg.MODEL.NAME.lower() + '_ckpts{epoch:03d}.h5'
+    ckpts_filename = cfg.MODEL.NAME.lower() + '_ckpts-{epoch:03d}.h5'
     hist_filename = '{}_hist.csv'.format(cfg.MODEL.NAME.lower())
     retrain_opt = True
     model, ckpts_logdir, start_epoch = train_init(model, retrain = retrain_opt)
@@ -257,6 +268,65 @@ def train_model(model, **kwargs):
             validation_data = (X_test, y_test),
             callbacks = callbacks,
             )
+
+# Load DataFrame
+def load_df(fullfilename, **kwargs):
+    """Load .csv or .xlxs file to pandas dataframe
+    Input:
+        fullfilename: fullpath to input data file in .csv or .xlsx format
+        Options:
+            skiprows: row index to skip
+    Returns:
+        df: pandas dataframe
+    """
+    skiprows = get_varargin(kwargs, 'skiprows',None)
+    filename,file_ext = os.path.splitext(fullfilename)
+    logging.info('Pandas read: {}{}'.format(filename, file_ext))    
+    if file_ext == '.csv':        
+        df = pd.read_csv(fullfilename, skiprows = skiprows)
+    else:
+        df = pd.read_excel(fullfilename, skiprows = skiprows)    
+    # ==== END ====
+    logging.info('DONE: %s' % inspect.stack()[0][3])     
+    return df
+
+def load_csv_history(**kwargs):
+    csv_filepath = Path(get_last_model()).parent / '{}_hist.csv'.format(cfg.MODEL.NAME.lower())
+    print(csv_filepath)
+    df = load_df(csv_filepath)
+    history = df.to_dict('list')
+    return history
+    # return history
+
+def plt_train_history(history):
+    """Generate plot for model loss and accuracy from training history
+    Args:
+        history ([type]): [description] 
+    """
+    # save_opt = get_varargin(kwargs, 'save', False)
+    # figname = get_varargin(kwargs, 'figname', '{}-model_loss.png'.format(todaystr))
+     
+    fig = plt.figure(figsize = (10,5))
+    # Loss 
+    ax = fig.add_subplot(121)
+    plt.plot(history['epoch'],history['loss'], color = 'k' ) # Training
+    plt.plot(history['epoch'],history['val_loss'], color = 'r') # Validation
+    plt.title('Model Loss')
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    plt.legend(['Train', 'Test'], loc='upper right')
+    # Accuracy
+    ax = fig.add_subplot(122)
+    plt.plot(history['epoch'],history['accuracy'], color = 'k')
+    plt.plot(history['epoch'],history['val_accuracy'], color = 'r')
+    # Annotation
+    plt.title('Model Accuracy')
+    plt.ylabel('Accuracy')
+    plt.xlabel('Epoch')
+
+history = load_csv_history()
+plt_train_history(history)
+
 # =================================================================================================================
 # MAIN
 def main(**kwargs):
@@ -277,10 +347,13 @@ def main(**kwargs):
     # model.summary()
     # with tf.device("/device:CPU:0"):
     model = mnist_model(num_classes = num_classes)
-    model.summary()
+    # with open(os.path.join(project_dir,'logging.log'),'w+') as fid:
+    #     with redirect_stdout(fid):
+    #         model.summary()
+    model.summary(print_fn = logging.info)
+    # plot_model(model)
     train_model(model)
     # Load mnist data
-# main()
 # =================================================================================================================
 # DEBUG
 #%%

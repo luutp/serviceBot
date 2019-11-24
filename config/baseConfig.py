@@ -64,7 +64,6 @@ def model_config():
     
     return MODEL
 
-
 def fileIO_config(**kwargs):
     """
      **kwargs:
@@ -119,8 +118,7 @@ def dataset_config():
     DATASET.IMAGE_SIZE = [224, 224]
     DATASET.IMAGE_CHANNELS = 3
     
-    return DATASET
-    
+    return DATASET    
 #%%
 def base_config():
     """
@@ -133,8 +131,6 @@ def base_config():
     cfg.FILEIO = fileIO_config()
     cfg.TRAIN = train_config()
     return cfg
-
-cfg = base_config()
 
 def update_config(to_dict, from_dict):
     pass
@@ -161,13 +157,6 @@ def load_yaml_file(yaml_filename):
 # Utils
 def print_config(cfg):
     json.dumps(cfg, indent = 4)
-# cfg = base_config()
-# print(cfg.MODEL.FRAMEWORK)
-# TEST = edict()
-# TEST.NAME = 'merged dict'
-# cfg = add_to_config(cfg, TEST)
-# # merge_config(cfg, test)
-# print(json.dumps(cfg, indent=4))
 # =================================================================================================================
 # MAIN
 #%%
