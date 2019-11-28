@@ -159,7 +159,7 @@ def log_nvidia_smi_info():
         info = info.decode("utf8")
     except Exception as e:
         info = "Executing nvidia-smi failed: " + str(e)
-    return info.strip()
+    logging.info(info.strip())
 
 def logPC_usage():
     cpu_usage = psutil.cpu_percent(percpu=True)

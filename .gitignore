@@ -25,6 +25,7 @@ wheels/
 *.log
 logModels/
 tf_logs
+*.ckpt*
 # media files
 *.png
 *.jpg

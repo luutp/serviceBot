@@ -61,7 +61,8 @@ def model_config():
     MODEL.URL_RESNET50_NOTOP = RESNET_URL + '/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5'
     MODEL.URL_RESNET101 = RESNET_URL + '/resnet101_weights_tf_dim_ordering_tf_kernels.h5'
     MODEL.URL_RESNET101_NOTOP = RESNET_URL + '/resnet101_weights_tf_dim_ordering_tf_kernels_notop.h5'
-    
+    MODEL.URL_COCO_MODEL = "https://github.com/matterport/Mask_RCNN/releases/download/v2.0/mask_rcnn_coco.h5"
+
     return MODEL
 
 def fileIO_config(**kwargs):

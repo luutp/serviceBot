@@ -1,0 +1,91 @@
+!!python/object/new:easydict.EasyDict
+dictitems:
+  FILEIO: &id006 !!python/object/new:easydict.EasyDict
+    dictitems:
+      DATASET_DIR: /home/phatluu/serviceBot/datasets
+      LOG_DIR: /home/phatluu/serviceBot/logs
+      PRE_TRAINED_DIR: /home/phatluu/serviceBot/train/pre_trained
+      PROJECT_DIR: /home/phatluu/serviceBot
+      YAML_CONFIG: /home/phatluu/serviceBot/config/base_config.yaml
+    state:
+      DATASET_DIR: /home/phatluu/serviceBot/datasets
+      LOG_DIR: /home/phatluu/serviceBot/logs
+      PRE_TRAINED_DIR: /home/phatluu/serviceBot/train/pre_trained
+      PROJECT_DIR: /home/phatluu/serviceBot
+      YAML_CONFIG: /home/phatluu/serviceBot/config/base_config.yaml
+  MODEL: &id007 !!python/object/new:easydict.EasyDict
+    dictitems:
+      BACKBONE: resnet101
+      FRAMEWORK: tensorflow
+      NAME: mnist_model
+      RESNET: &id005 !!python/object/new:easydict.EasyDict
+        dictitems:
+          FILTERS_C2: &id001
+          - 64
+          - 64
+          - 256
+          FILTERS_C3: &id002
+          - 128
+          - 128
+          - 512
+          FILTERS_C4: &id003
+          - 256
+          - 256
+          - 1024
+          FILTERS_C5: &id004
+          - 512
+          - 512
+          - 2048
+        state:
+          FILTERS_C2: *id001
+          FILTERS_C3: *id002
+          FILTERS_C4: *id003
+          FILTERS_C5: *id004
+      URL_RESNET101: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet101_weights_tf_dim_ordering_tf_kernels.h5
+      URL_RESNET101_NOTOP: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet101_weights_tf_dim_ordering_tf_kernels_notop.h5
+      URL_RESNET50: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet50_weights_tf_dim_ordering_tf_kernels.h5
+      URL_RESNET50_NOTOP: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5
+    state:
+      BACKBONE: resnet101
+      FRAMEWORK: tensorflow
+      NAME: mnist_model
+      RESNET: *id005
+      URL_RESNET101: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet101_weights_tf_dim_ordering_tf_kernels.h5
+      URL_RESNET101_NOTOP: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet101_weights_tf_dim_ordering_tf_kernels_notop.h5
+      URL_RESNET50: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet50_weights_tf_dim_ordering_tf_kernels.h5
+      URL_RESNET50_NOTOP: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5
+  TRAIN: &id008 !!python/object/new:easydict.EasyDict
+    dictitems:
+      BATCH_SIZE: 32
+      LEARNING_MOMENTUM: 0.9
+      LEARNING_RATE: 0.001
+      LEARNING_WEIGHT_DECAY: 0.0001
+      MAX_CKPTS_FILES: 3
+      NB_EPOCHS: 2
+      NB_GPUS: 3
+      OPTIMIZER: adam
+      PRINT_FREQ: 1
+      PROFILING_FREQ: 1
+      RESUME: false
+      SHUFFLE: true
+      STEPS_PER_EPOCH: 1000
+      USE_GPU: true
+    state:
+      BATCH_SIZE: 32
+      LEARNING_MOMENTUM: 0.9
+      LEARNING_RATE: 0.001
+      LEARNING_WEIGHT_DECAY: 0.0001
+      MAX_CKPTS_FILES: 3
+      NB_EPOCHS: 2
+      NB_GPUS: 3
+      OPTIMIZER: adam
+      PRINT_FREQ: 1
+      PROFILING_FREQ: 1
+      RESUME: false
+      SHUFFLE: true
+      STEPS_PER_EPOCH: 1000
+      USE_GPU: true
+state:
+  FILEIO: *id006
+  MODEL: *id007
+  TRAIN: *id008

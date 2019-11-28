@@ -28,6 +28,24 @@ import random
 from easydict import EasyDict as edict
 #   AI Framework
 import tensorflow as tf
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+# Restrict TensorFlow to only allocate 1GB of memory on the first GPU
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_virtual_device_configuration(
+                gpu,
+                [tf.config.experimental.VirtualDeviceConfiguration(memory_limit = 4096)])
+            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+            # print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+    except RuntimeError as e:
+        # Virtual devices must be set before GPUs have been initialized
+        print(e)
+import tensorflow_datasets as tfds
+
+# tf.compat.v1.disable_eager_execution()
+
 import tensorflow.keras as keras # tensorflow 2.0
 print('Tensorflow version: {}'.format(tf.__version__))
 print('Keras version: {}'.format(keras.__version__))
@@ -36,9 +54,12 @@ import tensorflow.keras.layers as KL
 import tensorflow.python.keras.engine as KE
 import tensorflow.keras.models as KM
 from tensorflow.keras.models import Model
+
+from tensorflow.python.keras.layers.merge import Concatenate
+from tensorflow.python.keras.layers.core import Lambda
+# from tensorflow.keras.models import Model
 from tensorflow.python.keras.utils.vis_utils import plot_model
 from keras_applications.imagenet_utils import _obtain_input_shape
-
 from tensorflow.keras.datasets import mnist
 
 #	Visualization Packages
@@ -61,18 +82,18 @@ from utils_dir.utils import timeit, get_varargin, ProgressBar
 from utils_dir import logger_utils as logger
 from model import resnet as resnet_utils
 # from datasets import mnist
-from config.baseConfig import base_config
+import config.baseConfig as baseConfig
 
 logger.logging_setup()
 # =================================================================================================================
 # DEFINES
 timenow = datetime.now().strftime('%Y%m%d_%H%M')
-cfg = base_config()
+cfg = baseConfig.base_config()
 cfg.MODEL.NAME = 'mnist_model'
-cfg.TRAIN.NB_EPOCHS = 4
+cfg.TRAIN.NB_EPOCHS = 2
 cfg.TRAIN.STEPS_PER_EPOCH = 1000
 cfg.TRAIN.PROFILING_FREQ = cfg.TRAIN.NB_EPOCHS - 1
-cfg.TRAIN.MAX_CKPTS_FILES = 10
+cfg.TRAIN.MAX_CKPTS_FILES = 3
 # =================================================================================================================
 def download_model_weight(model_url,**kwargs):
     """
@@ -106,23 +127,26 @@ def mnist_model(num_classes, **kwargs):
     x = KL.Dense(128, activation='relu', name="dense1")(x)
     x = KL.Dense(num_classes, activation='softmax', name="dense2")(x)
 
-    model = Model(inputs = img_input, outputs = x)
+    model = KM.Model(inputs = img_input, outputs = x)
     return model
 
-def parallel_model(model, **kwargs):
-    pass
+def get_epoch_number(filename):
+    filename = Path(filename).name
+    filename = filename.split(os.extsep)[0]
+    epoch = int(filename[filename.rfind('-')+1:])
+    return epoch
 
 def get_last_model(**kwargs):
-    model_dir = get_varargin(kwargs, 'model_dir', cfg.FILEIO.LOG_DIR)
+    log_dir = get_varargin(kwargs, 'log_dir', cfg.FILEIO.LOG_DIR)
+    and_key = get_varargin(kwargs, 'and_key', ['.ckpt'])
+    or_key = get_varargin(kwargs, 'or_key', None)
     # List .h5 files in model_dir directory
-    file_list = utils.select_files(model_dir, ext = ['.h5'])
+    file_list = utils.select_files(log_dir, and_key = and_key, or_key = or_key )
     return sorted(file_list)[-1]
 
 def load_model(**kwargs):
     pass
 
-def set_log_dir(**kwargs):
-    pass
 
 class profiling_Callback(tf.keras.callbacks.Callback):
     def __init__(self, **kwargs):
@@ -130,47 +154,41 @@ class profiling_Callback(tf.keras.callbacks.Callback):
         self.nb_epochs = get_varargin(kwargs, 'epochs', cfg.TRAIN.NB_EPOCHS)
         self.steps_per_epoch =  get_varargin(kwargs, 'steps_per_epoch', cfg.TRAIN.STEPS_PER_EPOCH)        
         self.profiling_freq =  get_varargin(kwargs, 'profiling_freq', cfg.TRAIN.PROFILING_FREQ) 
-        self.batchbar = ProgressBar(self.steps_per_epoch, title= 'Batch',
-                                    printer = 'stdout')
         
     def on_train_begin(self, logs = None):
         self.end_epoch = self.params['epochs']
         self.start_epoch = self.end_epoch - self.nb_epochs
+        
         self.progress = ProgressBar(self.end_epoch,
                                     title = 'Epoch', 
                                     start = self.start_epoch,
                                     symbol = '=', printer = 'logger')
-        
-    def on_train_batch_end(self, batch, logs=None):
-        self.batchbar.current += 1
-        self.batchbar()
-        if batch == self.steps_per_epoch-1:
-            self.batchbar.current = 0
+        logging.info('Train params:')
+        logging.info(json.dumps(self.params, indent = 2))
         
     def on_epoch_end(self, epoch, logs=None):
-        self.progress.current += 1
+        self.progress.current = epoch+1
         self.progress()
-        
-        logging.info('loss: {:.4f} -  Accuracy: {:.4f}'\
-            ' - val_loss:{:.4f} - val_accuracy:{:.4f}'\
+        logging.info('loss: {:.4f} - accuracy: {:.4f}'\
+            ' - val_loss: {:.4f} - val_accuracy: {:.4f}'\
             .format(logs['loss'], logs['accuracy'],
-                    logs['val_loss'], logs['val_accuracy'],
-                    ))
-        if (epoch-self.start_epoch) % self.profiling_freq == 0:
+                    logs['val_loss'], logs['val_accuracy']))
+        if epoch+1 == self.params['epochs']:
             logger.logPC_usage()
-            logger.logGPU_usage()
+            logger.log_nvidia_smi_info()
+        # # Delete ckpts file, only keep n-latest files
+        last_model = get_last_model()
+        ckpts_dir = Path(last_model).parent
+        ckpts_filelist = sorted(utils.select_files(ckpts_dir,and_key = ['.ckpt'])
+                                        , reverse = True)
+        epoch_list = sorted(np.unique([get_epoch_number(e) for e in ckpts_filelist]),
+                            reverse = True)
+        if len(epoch_list) > cfg.TRAIN.MAX_CKPTS_FILES:
+            cut_epoch = epoch_list[cfg.TRAIN.MAX_CKPTS_FILES-1]
+            for f in ckpts_filelist:
+                if get_epoch_number(f) < cut_epoch:
+                    os.remove(f)
         
-        # Delete ckpts file, only keep n-latest files
-        ckpts_dir = os.path.dirname(get_last_model())
-        ckpts_filelist = sorted(utils.select_files(ckpts_dir,
-                                                   and_key = ['ckpts','h5'])
-                                , reverse = True)
-        if len(ckpts_filelist) > cfg.TRAIN.MAX_CKPTS_FILES:
-            for f in ckpts_filelist[cfg.TRAIN.MAX_CKPTS_FILES:]:
-                print('Remove : {}'.format(f))
-                os.remove(f)
-                                
-
 def train_init(model, **kwargs):
     model_name = get_varargin(kwargs, 'model_name', cfg.MODEL.NAME)
     retrain = get_varargin(kwargs, 'retrain', True)
@@ -183,67 +201,30 @@ def train_init(model, **kwargs):
         utils.makedir(ckpts_logdir)
         model = model
     else:
-        last_model = get_last_model()
+        last_model = get_last_model(log_dir = cfg.FILEIO.LOG_DIR)
         ckpts_logdir = os.path.dirname(last_model)
+        last_model = last_model.replace('.index','')
         filename = os.path.splitext(Path(last_model).name)[0]
-        init_epoch = int(filename[-3:])
-        logging.info('Model Checkpoint: {}'.format(ckpts_logdir))
+        init_epoch = int(filename[filename.rfind('-')+1:])
         logging.info('Load model weights from: {}'.format(Path(last_model).name))
         model.load_weights(last_model)
+        # model = KM.load_model(last_model)
+    # Save cfg to yaml file
+    yaml_filepath = Path(ckpts_logdir) / '{}-config.yaml'.format(cfg.MODEL.NAME.lower())
+    baseConfig.make_yaml_file(cfg, yaml_filepath)    
     return model, ckpts_logdir, init_epoch
 
 @timeit
-def train_model(model, **kwargs):
-    logger.log_nvidia_smi_info()
-    ckpts_filename = cfg.MODEL.NAME.lower() + '_ckpts-{epoch:03d}.h5'
-    hist_filename = '{}_hist.csv'.format(cfg.MODEL.NAME.lower())
+def train_model(**kwargs):
+    ckpts_filename = 'mnist_model-ckpts-{epoch:04d}.ckpt'
+    hist_filename = '{}-hist.csv'.format(cfg.MODEL.NAME.lower())
     retrain_opt = True
-    model, ckpts_logdir, start_epoch = train_init(model, retrain = retrain_opt)
-    ckpts_filepath = os.path.join(ckpts_logdir, ckpts_filename)
-    hist_filepath = os.path.join(ckpts_logdir, hist_filename)
-    # default_checkpoint = os.path.join(log_dir, '{}_ckpts.h5'.format(model_name))
-    # checkpoint_path = get_varargin(kwargs, 'checkpoint', default_checkpoint)
-    # Callbacks
-    # tfboard_callback = keras.callbacks.TensorBoard(log_dir = log_dir,
-    #                                 histogram_freq=0, 
-    #                                 write_graph=True, 
-    #                                 write_images=False)
-    # checkpoint_filename = 'mnist_model_ckpts-{epoch:03d}.h5'
-    # checkpoint_path = os.path.join(log_dir, checkpoint_filename)
-    checkpoint_callback = keras.callbacks.ModelCheckpoint(ckpts_filepath, 
-                                        verbose = 1, 
-                                        monitor = 'loss',
-                                        mode = 'min',
-                                        save_best_only = True,
-                                        save_weights_only=True)
-    csvlog_callback = keras.callbacks.CSVLogger(hist_filepath,
-                                                append = True)
-    logging_callback = profiling_Callback(profiling_freq = cfg.TRAIN.PROFILING_FREQ)
-    callbacks = [checkpoint_callback, csvlog_callback,logging_callback]
-    # callbacks = [tfboard_callback, checkpoint_callback]
-    # Parallel model
-    # tf.compat.v1.disable_eager_execution()
-    # strategy = tf.distribute.MirroredStrategy()
-    # with strategy.scope():
-        # model = model
-    # with tf.device("/device:CPU:0"):
-    #     model = model
-    # model = tf.compat.v1.keras.utils.multi_gpu_model(model, gpus = cfg.TRAIN.NB_GPUS,
-    #                                     cpu_merge = True)
+    datasets, info = tfds.load(name='mnist', with_info=True, as_supervised=True)
 
-    # keras.utils.multi_gpu_model()
-    model.compile(loss = keras.losses.categorical_crossentropy,
-            optimizer = keras.optimizers.Adadelta(),
-            metrics= ['accuracy'])
-        
-    # callbacks = [checkpoint_callback]
-    # X_train, y_train, X_test, y_test = mnist.get_mnist()
-    # input image dimensions
-    img_rows, img_cols = 28, 28
-    num_classes = 10
-    # the data, split between train and test sets
+    # mnist_train, mnist_test = datasets['train'], datasets['test']
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
-
+    img_rows = 28
+    img_cols = 28
     if K.image_data_format() == 'channels_first':
         x_train = x_train.reshape(x_train.shape[0], 1, img_rows, img_cols)
         x_test = x_test.reshape(x_test.shape[0], 1, img_rows, img_cols)
@@ -252,24 +233,47 @@ def train_model(model, **kwargs):
         x_train = x_train.reshape(x_train.shape[0], img_rows, img_cols, 1)
         x_test = x_test.reshape(x_test.shape[0], img_rows, img_cols, 1)
         input_shape = (img_rows, img_cols, 1)
-
-    X_train = x_train.astype('float32')
-    X_test = x_test.astype('float32')
-    X_train /= 255
-    X_test /= 255
-    # convert class vectors to binary class matrices
-    y_train = keras.utils.to_categorical(y_train, num_classes)
-    y_test = keras.utils.to_categorical(y_test, num_classes)
-    model.fit(X_train,y_train,
-            steps_per_epoch = cfg.TRAIN.STEPS_PER_EPOCH,
-            initial_epoch = start_epoch,
-            epochs = start_epoch + cfg.TRAIN.NB_EPOCHS,
-            verbose = 0,
-            validation_data = (X_test, y_test),
-            callbacks = callbacks,
-            )
-
-# Load DataFrame
+    
+    
+    mnist_train = tf.data.Dataset.from_tensor_slices((x_train, y_train))
+    mnist_test = tf.data.Dataset.from_tensor_slices((x_test, y_test))
+    
+    strategy = tf.distribute.MirroredStrategy() 
+    BUFFER_SIZE = 1000
+    BATCH_SIZE_PER_REPLICA = 32
+    BATCH_SIZE = BATCH_SIZE_PER_REPLICA * strategy.num_replicas_in_sync
+    def scale(image, label):
+        image = tf.cast(image, tf.float32)
+        image /= 255
+        return image, label
+    train_dataset = mnist_train.map(scale).shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
+    eval_dataset = mnist_test.map(scale).batch(BATCH_SIZE)   
+   
+    with strategy.scope():
+        model = mnist_model(10)
+        model, ckpts_logdir, start_epoch = train_init(model, retrain = retrain_opt)
+        model.compile(loss='sparse_categorical_crossentropy',
+                optimizer = keras.optimizers.Adam(),
+                metrics=['accuracy'])
+    
+    ckpts_filepath = os.path.join(ckpts_logdir, ckpts_filename)
+    hist_filepath = os.path.join(ckpts_logdir, hist_filename)
+    
+    checkpoint_callback = keras.callbacks.ModelCheckpoint(filepath = ckpts_filepath,
+                                                          verbose = 1,
+                                                          save_weights_only = True)
+    logging_callback = profiling_Callback()
+    csvlog_callback = keras.callbacks.CSVLogger(hist_filepath,
+                                                append = True)
+    
+    callbacks = [checkpoint_callback, logging_callback, csvlog_callback]
+    model.fit(train_dataset, 
+              initial_epoch = start_epoch,
+              epochs = start_epoch + cfg.TRAIN.NB_EPOCHS, 
+              validation_data = eval_dataset,
+              verbose = True, 
+              callbacks=callbacks)
+    
 def load_df(fullfilename, **kwargs):
     """Load .csv or .xlxs file to pandas dataframe
     Input:
@@ -291,14 +295,14 @@ def load_df(fullfilename, **kwargs):
     return df
 
 def load_csv_history(**kwargs):
-    csv_filepath = Path(get_last_model()).parent / '{}_hist.csv'.format(cfg.MODEL.NAME.lower())
+    csv_filepath = Path(get_last_model()).parent / '{}-hist.csv'.format(cfg.MODEL.NAME.lower())
     print(csv_filepath)
     df = load_df(csv_filepath)
     history = df.to_dict('list')
     return history
     # return history
 
-def plt_train_history(history):
+def plt_train_history(history): 
     """Generate plot for model loss and accuracy from training history
     Args:
         history ([type]): [description] 
@@ -324,36 +328,19 @@ def plt_train_history(history):
     plt.ylabel('Accuracy')
     plt.xlabel('Epoch')
 
-history = load_csv_history()
-plt_train_history(history)
+# history = load_csv_history()
+# plt_train_history(history)
 
 # =================================================================================================================
 # MAIN
 def main(**kwargs):
     # model = mnist_model(num_classes=10)
     num_classes = 10
-    # input_shape = (28,28,1)
-    # model = KM.Sequential()
-    # model.add(KL.Conv2D(32, kernel_size=(3, 3),
-    #                 activation='relu',
-    #                 input_shape=input_shape))
-    # model.add(KL.Conv2D(64, (3, 3), activation='relu'))
-    # model.add(KL.MaxPooling2D(pool_size=(2, 2)))
-    # model.add(KL.Dropout(0.25))
-    # model.add(KL.Flatten())
-    # model.add(KL.Dense(128, activation='relu'))
-    # model.add(KL.Dropout(0.5))
-    # model.add(KL.Dense(num_classes, activation='softmax'))
-    # model.summary()
-    # with tf.device("/device:CPU:0"):
-    model = mnist_model(num_classes = num_classes)
-    # with open(os.path.join(project_dir,'logging.log'),'w+') as fid:
-    #     with redirect_stdout(fid):
-    #         model.summary()
-    model.summary(print_fn = logging.info)
-    # plot_model(model)
-    train_model(model)
+    train_model()
     # Load mnist data
+
+
+
 # =================================================================================================================
 # DEBUG
 #%%

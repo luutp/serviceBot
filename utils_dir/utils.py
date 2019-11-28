@@ -136,6 +136,15 @@ class ProgressBar(object):
         else:
             logging.info(self.fmt % args)
 
+def list_fulldir(rootdir, **kwargs):
+    get_latest = get_varargin(kwargs, 'get_latest', False)
+    dirlist = [os.path.join(rootdir, f) for f in os.listdir(rootdir)]
+    dirlist = [f for f in dirlist if os.path.isdir(f)]
+    if get_latest is True:
+        return sorted(dirlist)[-1]
+    else:
+        return dirlist
+    
 # Select files from input_directory
 def select_files(root_dir, **kwargs):
     """

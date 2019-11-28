@@ -15,6 +15,8 @@ sudo apt-get update
 sudo apt-get install -y nvidia-418
 # Install graphviz
 sudo apt-get install -y graphviz
+# Device manager
+sudo apt-get install -y hardinfo
 ## Download Anaconda
 FILE=$DOWNLOAD_DIR/$CONDA_FILENAME
 if [ -f "$FILE" ]; then
