@@ -14,6 +14,7 @@ import pkgutil
 from pathlib import Path
 import requests
 import json
+import yaml
 import h5py
 #	Utilities
 from tqdm import tqdm
@@ -58,12 +59,83 @@ def timeit(method):
         logging.info(msg)
         return result
     return timed
+
+# Decorator
+def verbose(method):
+    def inner(*args, **kwargs):
+        filepath = get_varargin(kwargs, 'filepath', 'None')
+        logging.info('START: {} -- Filename: {}.'.format(method.__name__, filepath))
+        result = method(*args, **kwargs)
+        msg = 'DONE: {func_name}.\t' \
+            .format(func_name = method.__name__)        
+        logging.info(msg)
+        return result
+    return inner
 # =================================================================================================================
 # FILE IO
+@verbose
+def read_txt(**kwargs):
+    filepath = get_varargin(kwargs, 'filepath', None)
+    _,ext = os.path.splitext(Path(filepath).name)
+    output = None
+    if ext == '.txt':   
+        # open the file as read only
+        with open(filepath, 'r') as fid:
+            output = fid.read()
+    return output
+
+@verbose
+def save_yaml(inputdata, **kwargs):
+    filename = get_varargin(kwargs, 'filepath', './untitiled.yaml')
+    with open(filename, 'w') as fid:
+        yaml.dump(inputdata, fid)
+        
+@verbose
+def save_json(inputdata, **kwargs):
+    """Save dict to .json file
+    
+    Arguments:
+    
+        inputdata {[dict]} -- [data so save]
+        kwargs:
+            filepath: str -- .json filepath. Default: './untitile.json'
+            overwrite: bool -- option to overwrite existing file. Default: False
+    """
+    # Parse input arguments
+    filepath = get_varargin(kwargs, 'filepath', './untitiled.json')
+    overwrite_opt = get_varargin(kwargs, 'overwrite', False)
+    
+    if os.path.exists(filepath) and overwrite_opt is False:
+            logging.info('File exists: {}. Skip saving'.format(filepath))
+            return -1
+    # Save json file
+    with open(filepath, 'w') as fid:
+        json.dump(inputdata, fid)
+
+@verbose
+def read_json(**kwargs):
+    """Load .json file
+    
+    Arguments:
+    
+        Options:
+            filepath: -- str. .json filepath
+    
+    Returns:
+        [dict] -- .json data
+    """
+    filename = get_varargin(kwargs, 'filepath', './untitiled.json')
+    with open(filename, 'r') as fid:
+        data = fid.read()
+    return data
+
 @timeit
 def unzip_file(filename, **kwargs):
     '''
     unzip file
+    Options:
+        output -- str. Directory path. Default. Same as input filename
+        remove -- Boolean. Option to delete zip file. Default. True
     '''
     output_dir = get_varargin(kwargs, 'output', os.path.dirname(filename))
     del_zip = get_varargin(kwargs,'remove', True)
@@ -94,6 +166,7 @@ def download_url(url, to_file, **kwargs):
     total_size = int(r.headers.get('content-length', 0))
     block_size = 1024 #1 Kibibyte
     t=tqdm(total=total_size, unit='iB', unit_scale=True)
+    makedir(Path(to_file).parent)
     with open(to_file, 'wb') as fid:
         for data in r.iter_content(block_size):
             t.update(len(data))

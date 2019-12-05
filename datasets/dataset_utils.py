@@ -10,6 +10,7 @@ Created on: 2019/10/28
 '''
 # =================================================================================================================
 # IMPORT PACKAGES
+#%%
 from __future__ import print_function
 import os
 import inspect, sys
@@ -31,16 +32,38 @@ import time
 from datetime import datetime
 import logging
 # Custom packages
+# Custom packages
 user_dir = os.path.expanduser('~')
-script_dir = Path((__file__)).parents[0]
+current_dir = Path((__file__)).parents[0]
 project_dir = os.path.abspath(Path((__file__)).parents[1])
 sys.path.append(project_dir)
+import utils_dir.utils as utils
 from utils_dir.utils import timeit, get_varargin
+from config.baseConfig import base_config
 from utils_dir import logger_utils as logger
-import datasets.dataset_utils
 logger.logging_setup()
+ 
+cfg = base_config()
 # =================================================================================================================
 # FUNCTIONS
+# Download Datasets
+def download_coco_img_caption(**kwargs): 
+    # utils.makedir(cfg.DATASET.ROOTDIR)
+    coco_dataset_dir = Path(cfg.DATASET.ROOTDIR) / 'coco'
+    coco_anno_dir = coco_dataset_dir / 'annotations'
+    coco_img_dir = coco_dataset_dir / 'images'
+    anno_output_file =  coco_anno_dir / Path(cfg.DATASET.URL_COCO_ANNOTATIONS_TRAINVAL2014).name
+    utils.download_url(cfg.DATASET.URL_COCO_ANNOTATIONS_TRAINVAL2014,
+                       to_file = anno_output_file)
+    utils.unzip_file(anno_output_file, remove = False)
+    
+    img_output_file = coco_img_dir / Path(cfg.DATASET.URL_COCO_TRAIN2014).name
+    utils.download_url(cfg.DATASET.URL_COCO_TRAIN2014,
+                       to_file = img_output_file)
+    utils.unzip_file(img_output_file, remove = False)
+
+#%%
+
 # Display datasets information
 def show_traintest_info(X_train, y_train, X_test, y_test, **kwargs):    
     """[summary]
@@ -115,10 +138,15 @@ def downloadimages(query, **kwargs):
     # Handling File NotFound Error     
     except FileNotFoundError:  
         pass
+
 # =================================================================================================================
 # DEBUG
+def main(**kwargs):
+    download_coco_img_caption()
+    
 if __name__ == '__main__':
+    main()
     # output_dir = current_dir
     # downloadimages('cat', nb_images = 5, output_directory = output_dir)
-    (X_train, y_train),(X_test, y_test) = keras.datasets.mnist.load_data()
-    traintest_info(X_train, y_train, X_test, y_test)
+    # (X_train, y_train),(X_test, y_test) = keras.datasets.mnist.load_data()
+    # traintest_info(X_train, y_train, X_test, y_test)

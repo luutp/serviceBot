@@ -14,6 +14,7 @@ Created on: 2019/10/28
 from __future__ import print_function
 
 import os
+import io
 import inspect, sys
 import platform
 from subprocess import Popen, PIPE, check_output, STDOUT
@@ -28,7 +29,9 @@ from distutils import spawn
 import time
 from datetime import datetime
 import logging
+import vlogging
 import psutil
+from PIL import Image as PILImage
 #  DL framework
 from tensorflow.python.client import device_lib
 # =================================================================================================================
@@ -41,24 +44,83 @@ project_dir = os.path.abspath(filepath.parents[1])
 sys.path.append(project_dir)
 #	Custom packages
 from utils_dir.utils import timeit, get_varargin
-# =================================================================================================================
-# DEF
+# =================================================================================================================    
+class colorFormatter(logging.Formatter):
+    """Logging Formatter to add colors and count warning / errors"""
+    grey = "\x1b[38;21m"
+    yellow = "\x1b[33;21m"
+    red = "\x1b[31;21m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+    # msgformat = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+    msgformat = '%(asctime)s|%(filename)s:%(lineno)d|%(levelname)s| %(message)s'
+    FORMATS = {
+        logging.DEBUG: grey + msgformat + reset,
+        logging.INFO: grey + msgformat + reset,
+        logging.WARNING: yellow + msgformat + reset,
+        logging.ERROR: red + msgformat + reset,
+        logging.CRITICAL: bold_red + msgformat + reset
+    }
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt, datefmt='%y%m%d-%I:%M')
+        return formatter.format(record)
+
+class html_colorFormatter(logging.Formatter):
+    """Logging Formatter to add colors and count warning / errors"""
+    black = "<p style='color:black; white-space:pre'>"
+    blue = "<p style='color:blue'>"
+    orange = "<p style='color:#ff8c00; font-weight:bold'>"
+    red = "<p style='color:red; font-weight:bold'>"
+    span = "<span style='color: #026440;''>"
+    reset = "</p>"
+    msgformat = '%(asctime)s|%(filename)s:%(lineno)d|%(levelname)s|'
+    FORMATS = {
+        logging.DEBUG: blue + msgformat + "\t" + '%(message)s' + reset,
+        logging.INFO: black + span +  msgformat + "</span>\t" + '%(message)s' + reset,
+        logging.WARNING: orange + msgformat + "\t" + '%(message)s' + reset,
+        logging.ERROR: red + msgformat +"\t"+ '%(message)s' +  reset,
+        logging.CRITICAL: red + msgformat + "\t" + '%(message)s' + reset
+    }
+    def format(self, record):
+        message = str(record.msg)
+        message = "<br />".join(message.split("\n"))
+        record.msg = message
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt, datefmt='%y%m%d-%I:%M')
+        return formatter.format(record)
+    
 def logging_setup(**kwargs):
-    default_logfile = os.path.join(current_dir, 'logging.log')
+    default_logfile = os.path.join(current_dir, 'logging.html')
     log_file = get_varargin(kwargs, 'log_file', default_logfile)
     # 	Logging
     logger = logging.getLogger()
     stream_hdl = logging.StreamHandler(sys.stdout)
     file_hdl = logging.FileHandler(log_file, mode = 'a')
-    formatter = logging.Formatter('%(asctime)s|%(filename)s|%(levelname)s| %(message)s', datefmt='%y%m%d-%I:%M')
-    stream_hdl.setFormatter(formatter)
+    stream_hdl.setFormatter(colorFormatter())
     logger.addHandler(stream_hdl)
-    file_hdl.setFormatter(formatter)
+    file_hdl.setFormatter(html_colorFormatter())
     logger.addHandler(file_hdl)
     logger.setLevel(logging.INFO)
     # Only keep one logger
     for h in logger.handlers[:-2]: 
         logger.removeHandler(h)
+# =================================================================================================================
+# tqdm
+class logging_tqdm(io.StringIO):
+    """
+        Output stream for TQDM which will output to logger module instead of
+        the StdOut.
+    """
+    buf = ''
+    def __init__(self):
+        super(logging_tqdm, self).__init__()
+        self.logger = logging.getLogger()
+        self.level = logging.INFO
+    def write(self,buf):
+        self.buf = buf.strip('\r\n\t ')
+    def flush(self):
+        self.logger.log(self.level, self.buf)
 # =================================================================================================================
 # LOG HARDWARE
 def logging_hardware(**kwargs):
@@ -213,6 +275,10 @@ def log_train_time(duration):
 if __name__ == '__main__':
     logging_setup()
     logging.info('Hello!')
-    logging_setup()
+    # pil_image = PILImage.open('/home/phatluu/serviceBot/Downloads/lenna.jpg')
+    # logging.info(vlogging.VisualRecord(
+    #     "Hello from PIL", pil_image, "This is PIL image", fmt="jpeg"))
+    logging.warning('Warning Hello!\n newline ')
+    logging.error('Error message Hello!')
     # logging_hardware()
-    logGPU_usage()
+    # log_nvidia_smi_info()

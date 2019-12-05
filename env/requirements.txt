@@ -38,6 +38,8 @@ pathlib
 #   Progress bar
 tqdm
 psutil # Profiling CPU usage
+# NLP
+nltk # NLP toolkit
 #   Shapely
 #   Download .whl package from: https://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely and pip install .whl package
 # =================================================================================================================

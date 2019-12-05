@@ -40,7 +40,6 @@ from utils_dir import logger_utils as logger
 logger.logging_setup()
 # =================================================================================================================
 # START
-#%%
 # Config base class
 def model_config():
     MODEL = edict()
@@ -119,8 +118,12 @@ def dataset_config():
     DATASET.IMAGE_SIZE = [224, 224]
     DATASET.IMAGE_CHANNELS = 3
     
+    DATASET.ROOTDIR = '/media/phatluu/Ubuntu_D/datasets'
+    
+    DATASET.URL_COCO_ANNOTATIONS_TRAINVAL2014 = 'http://images.cocodataset.org/annotations/annotations_trainval2014.zip'
+    DATASET.URL_COCO_TRAIN2014 = 'http://images.cocodataset.org/zips/train2014.zip'
     return DATASET    
-#%%
+
 def base_config():
     """
     Base Config class. For custom application, create a sub-class that inherits from this base class
@@ -131,6 +134,7 @@ def base_config():
     cfg.MODEL = model_config()
     cfg.FILEIO = fileIO_config()
     cfg.TRAIN = train_config()
+    cfg.DATASET = dataset_config()
     return cfg
 
 def update_config(to_dict, from_dict):
@@ -162,7 +166,10 @@ def print_config(cfg):
 # MAIN
 #%%
 def main(**kwargs):
-    pass
+    cfg = base_config()
+    with open('./base_config.json', 'w') as fid:
+        json.dump(cfg, fid)
+    # utils.makedir(cfg.DATASET.ROOTDIR)
 # =================================================================================================================
 # DEBUG
 #%%
