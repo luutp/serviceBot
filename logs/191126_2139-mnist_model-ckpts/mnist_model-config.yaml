@@ -1,6 +1,23 @@
 !!python/object/new:easydict.EasyDict
 dictitems:
-  FILEIO: &id006 !!python/object/new:easydict.EasyDict
+  DATASET: &id007 !!python/object/new:easydict.EasyDict
+    dictitems:
+      IMAGE_CHANNELS: 3
+      IMAGE_SIZE: &id001
+      - 224
+      - 224
+      NB_CLASSES: 2
+      ROOTDIR: /media/phatluu/Ubuntu_D/datasets
+      URL_COCO_ANNOTATIONS_TRAINVAL2014: http://images.cocodataset.org/annotations/annotations_trainval2014.zip
+      URL_COCO_TRAIN2014: http://images.cocodataset.org/zips/train2014.zip
+    state:
+      IMAGE_CHANNELS: 3
+      IMAGE_SIZE: *id001
+      NB_CLASSES: 2
+      ROOTDIR: /media/phatluu/Ubuntu_D/datasets
+      URL_COCO_ANNOTATIONS_TRAINVAL2014: http://images.cocodataset.org/annotations/annotations_trainval2014.zip
+      URL_COCO_TRAIN2014: http://images.cocodataset.org/zips/train2014.zip
+  FILEIO: &id008 !!python/object/new:easydict.EasyDict
     dictitems:
       DATASET_DIR: /home/phatluu/serviceBot/datasets
       LOG_DIR: /home/phatluu/serviceBot/logs
@@ -13,34 +30,35 @@ dictitems:
       PRE_TRAINED_DIR: /home/phatluu/serviceBot/train/pre_trained
       PROJECT_DIR: /home/phatluu/serviceBot
       YAML_CONFIG: /home/phatluu/serviceBot/config/base_config.yaml
-  MODEL: &id007 !!python/object/new:easydict.EasyDict
+  MODEL: &id009 !!python/object/new:easydict.EasyDict
     dictitems:
       BACKBONE: resnet101
       FRAMEWORK: tensorflow
       NAME: mnist_model
-      RESNET: &id005 !!python/object/new:easydict.EasyDict
+      RESNET: &id006 !!python/object/new:easydict.EasyDict
         dictitems:
-          FILTERS_C2: &id001
+          FILTERS_C2: &id002
           - 64
           - 64
           - 256
-          FILTERS_C3: &id002
+          FILTERS_C3: &id003
           - 128
           - 128
           - 512
-          FILTERS_C4: &id003
+          FILTERS_C4: &id004
           - 256
           - 256
           - 1024
-          FILTERS_C5: &id004
+          FILTERS_C5: &id005
           - 512
           - 512
           - 2048
         state:
-          FILTERS_C2: *id001
-          FILTERS_C3: *id002
-          FILTERS_C4: *id003
-          FILTERS_C5: *id004
+          FILTERS_C2: *id002
+          FILTERS_C3: *id003
+          FILTERS_C4: *id004
+          FILTERS_C5: *id005
+      URL_COCO_MODEL: https://github.com/matterport/Mask_RCNN/releases/download/v2.0/mask_rcnn_coco.h5
       URL_RESNET101: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet101_weights_tf_dim_ordering_tf_kernels.h5
       URL_RESNET101_NOTOP: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet101_weights_tf_dim_ordering_tf_kernels_notop.h5
       URL_RESNET50: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet50_weights_tf_dim_ordering_tf_kernels.h5
@@ -49,12 +67,13 @@ dictitems:
       BACKBONE: resnet101
       FRAMEWORK: tensorflow
       NAME: mnist_model
-      RESNET: *id005
+      RESNET: *id006
+      URL_COCO_MODEL: https://github.com/matterport/Mask_RCNN/releases/download/v2.0/mask_rcnn_coco.h5
       URL_RESNET101: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet101_weights_tf_dim_ordering_tf_kernels.h5
       URL_RESNET101_NOTOP: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet101_weights_tf_dim_ordering_tf_kernels_notop.h5
       URL_RESNET50: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet50_weights_tf_dim_ordering_tf_kernels.h5
       URL_RESNET50_NOTOP: https://github.com/keras-team/keras-applications/releases/download/resnet/resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5
-  TRAIN: &id008 !!python/object/new:easydict.EasyDict
+  TRAIN: &id010 !!python/object/new:easydict.EasyDict
     dictitems:
       BATCH_SIZE: 32
       LEARNING_MOMENTUM: 0.9
@@ -86,6 +105,7 @@ dictitems:
       STEPS_PER_EPOCH: 1000
       USE_GPU: true
 state:
-  FILEIO: *id006
-  MODEL: *id007
-  TRAIN: *id008
+  DATASET: *id007
+  FILEIO: *id008
+  MODEL: *id009
+  TRAIN: *id010

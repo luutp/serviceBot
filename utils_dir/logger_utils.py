@@ -21,9 +21,13 @@ from subprocess import Popen, PIPE, check_output, STDOUT
 # FileIO
 import json
 from pathlib import Path
+from io import BytesIO
+import base64
 # Computations
 import math
 import random
+# Visualization
+from vlogging import VisualRecord
 # Utils
 from distutils import spawn
 import time
@@ -44,6 +48,7 @@ project_dir = os.path.abspath(filepath.parents[1])
 sys.path.append(project_dir)
 #	Custom packages
 from utils_dir.utils import timeit, get_varargin
+import utils_dir.utils as utils
 # =================================================================================================================    
 class colorFormatter(logging.Formatter):
     """Logging Formatter to add colors and count warning / errors"""
@@ -105,6 +110,7 @@ def logging_setup(**kwargs):
     # Only keep one logger
     for h in logger.handlers[:-2]: 
         logger.removeHandler(h)
+
 # =================================================================================================================
 # tqdm
 class logging_tqdm(io.StringIO):
@@ -121,6 +127,25 @@ class logging_tqdm(io.StringIO):
         self.buf = buf.strip('\r\n\t ')
     def flush(self):
         self.logger.log(self.level, self.buf)
+        
+# =================================================================================================================
+# log figure to html
+def logging_figure(fig, **kwargs):
+    desc = get_varargin(kwargs, 'description', '')
+    img_size = get_varargin(kwargs, 'img_size', 500)
+    tmpfile = BytesIO()
+    fig.savefig(tmpfile, format='png')
+    encoded = base64.b64encode(tmpfile.getvalue()).decode('utf-8')
+    html = desc + "<br/>" + "<img src=\'data:image/png;base64,{}\' style = 'width:{}px;height:{}px'>".format(encoded,img_size,img_size)
+    logging.info(html)
+
+# log head of dict
+def logging_head(inputvar, **kwargs):
+    size = get_varargin(kwargs, 'size', 5)
+    if type(inputvar) is dict:
+        inputdict = inputvar
+        for key in list(inputdict)[:size]:
+            logging.info('{}: {}'.format(key, inputdict[key]))
 # =================================================================================================================
 # LOG HARDWARE
 def logging_hardware(**kwargs):
@@ -272,13 +297,16 @@ def log_train_time(duration):
 #%%
 # =================================================================================================================
 # DEBUG
+def main(**kwargs):
+    pass
 if __name__ == '__main__':
-    logging_setup()
-    logging.info('Hello!')
-    # pil_image = PILImage.open('/home/phatluu/serviceBot/Downloads/lenna.jpg')
-    # logging.info(vlogging.VisualRecord(
-    #     "Hello from PIL", pil_image, "This is PIL image", fmt="jpeg"))
-    logging.warning('Warning Hello!\n newline ')
-    logging.error('Error message Hello!')
+    main()
+    # logging_setup()
+    # logging.info('Hello!')
+    # # pil_image = PILImage.open('/home/phatluu/serviceBot/Downloads/lenna.jpg')
+    # # logging.info(vlogging.VisualRecord(
+    # #     "Hello from PIL", pil_image, "This is PIL image", fmt="jpeg"))
+    # logging.warning('Warning Hello!\n newline ')
+    # logging.error('Error message Hello!')
     # logging_hardware()
     # log_nvidia_smi_info()

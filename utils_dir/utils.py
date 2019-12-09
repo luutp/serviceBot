@@ -16,12 +16,18 @@ import requests
 import json
 import yaml
 import h5py
+import pickle
+
+import pandas as pd
 #	Utilities
 from tqdm import tqdm
 import time
 from datetime import datetime
 import logging
 import re # for ProgressBar
+import functools
+# Visualization
+import matplotlib.pyplot as plt
 # =================================================================================================================
 # Custom packages
 user_dir = os.path.expanduser('~')
@@ -42,6 +48,7 @@ def get_varargin(kwargs, inputkey, defaultValue):
 # timeit
 # Decorator
 def timeit(method):
+    @functools.wraps(method)
     def timed(*args, **kwargs):
         start_time = time.time()
         logging.info('START: {}'.format(method.__name__))
@@ -61,27 +68,73 @@ def timeit(method):
     return timed
 
 # Decorator
-def verbose(method):
-    def inner(*args, **kwargs):
-        filepath = get_varargin(kwargs, 'filepath', 'None')
-        logging.info('START: {} -- Filename: {}.'.format(method.__name__, filepath))
-        result = method(*args, **kwargs)
-        msg = 'DONE: {func_name}.\t' \
-            .format(func_name = method.__name__)        
-        logging.info(msg)
-        return result
-    return inner
+def verbose(_func = None, *, desc = None):
+    def decorator_verbose(func):
+        @functools.wraps(func)
+        def inner(*args, **kwargs):
+            if desc is not None:
+                logging.info(desc)
+            filepath = get_varargin(kwargs, 'filepath', None)            
+            if filepath is not None:
+                logging.info('START: {} -- Filename: {}'.format(func.__name__, filepath))
+            else:
+                
+                logging.info('START: {}'.format(func.__name__))
+            try:
+                result = func(*args, **kwargs)
+            except Exception as e:
+                logging.error(e)
+                return None
+            msg = 'DONE: {func_name}.\t' \
+                .format(func_name = func.__name__)        
+            logging.info(msg)
+            return result
+        return inner
+    if _func is None:
+        return decorator_verbose
+    else:
+        return decorator_verbose(_func)
+    
+# Decorator
+def savefig(_func = None, *, filepath = None):
+    def decorator_savefig(func):
+        @functools.wraps(func)
+        def inner(*args, **kwargs):
+            if filepath is None:
+                # to_file = Path(inspect.getfile(func)).parent / '{}_{}.png'.format(datetime.now().strftime('%y%m%d%H%M'), func.__name__)
+                to_file = Path(project_dir) /'outputs' / '{}_{}.png'.format(datetime.now().strftime('%y%m%d%H%M'), func.__name__)
+            else:
+                to_file = Path(filepath)
+            logging.info('START: savefig: {}.'.format(to_file))
+            try:
+                result = func(*args, **kwargs)
+                plt.savefig(to_file)
+            except Exception as e:
+                logging.error(e)
+                return None
+            msg = 'DONE: {func_name}.\t' \
+                .format(func_name = func.__name__)        
+            logging.info(msg)
+            return result
+        return inner
+    if _func is None:
+        return decorator_savefig
+    else:
+        return decorator_savefig(_func)
 # =================================================================================================================
 # FILE IO
 @verbose
 def read_txt(**kwargs):
     filepath = get_varargin(kwargs, 'filepath', None)
-    _,ext = os.path.splitext(Path(filepath).name)
+    ext = os.path.splitext(Path(filepath).name)[1]
+    # ext = Path(filepath).suffix
     output = None
     if ext == '.txt':   
         # open the file as read only
         with open(filepath, 'r') as fid:
             output = fid.read()
+    else:
+        logging.warning('{} is not .txt'. format(ext))
     return output
 
 @verbose
@@ -107,7 +160,7 @@ def save_json(inputdata, **kwargs):
     
     if os.path.exists(filepath) and overwrite_opt is False:
             logging.info('File exists: {}. Skip saving'.format(filepath))
-            return -1
+            return
     # Save json file
     with open(filepath, 'w') as fid:
         json.dump(inputdata, fid)
@@ -129,6 +182,63 @@ def read_json(**kwargs):
         data = fid.read()
     return data
 
+@verbose
+def save_pickle(input_list, **kwargs):
+    """Save data to pickle file
+    
+    Arguments:
+    
+        input_list {[type]} -- [description]
+        kwargs:
+            filepath -- str. path to save pickle file. Default. './untitled.pickle'
+    """
+    filename = get_varargin(kwargs, 'filepath', './untitled.pickle')
+    with open(filename, 'wb') as fid:
+        for var in input_list:
+            pickle.dump(var, fid)
+
+@verbose
+def read_pickle(**kwargs):
+    filename = get_varargin(kwargs, 'filepath', './untitiled.json')
+    with open(filename, 'rb') as fid:
+        data = pickle.load(fid)
+    return data
+
+@verbose
+def read_df(**kwargs):
+    """Load .csv or .xlxs file to pandas dataframe
+    
+    Input:
+    
+        fullfilename: fullpath to input data file in .csv or .xlsx format
+        Options:
+            skiprows: row index to skip
+            
+    Returns:
+    
+        df: pandas dataframe
+    """
+    fullfilename = get_varargin(kwargs, 'filepath', None)
+    skiprows = get_varargin(kwargs, 'skiprows',None)
+    filename,file_ext = os.path.splitext(fullfilename)
+    # try:
+    if file_ext == '.csv':        
+        df = pd.read_csv(fullfilename, skiprows = skiprows)
+    else:
+        df = pd.read_excel(fullfilename, skiprows = skiprows)    
+    return df
+    # except Exception as e:
+        # logging.error('Failed to load dataframe.\n{}'.format(str(e)))
+        
+# =================================================================================================================
+# COMMENTS
+def pickle_data(list_of_var, **kwargs):
+    filename = get_varargin(kwargs, 'filename', 'untitled.pickle')
+    with open(filename, 'wb') as fid:
+        for var in list_of_var:
+            pickle.dump(var, fid)
+
+# =================================================================================================================
 @timeit
 def unzip_file(filename, **kwargs):
     '''
@@ -286,9 +396,10 @@ def show_obj_params(obj):
         print('{} : {} '.format(key, val))
 
 def print_dict(input_dict):
-    print(json.dumps(input_dict, indent = 2))
-    # for key, val in input.items():
-    #     print(key, ":", val)
+    # print(json.dumps(input_dict, indent = 2))
+    for key, val in input.items():
+        print(key, ":\n")
+        print('\t{}'.format(val))
 
 def print_ndarray(input_mat):
     """Print ndarray in python as matrix in Matlab
@@ -297,15 +408,15 @@ def print_ndarray(input_mat):
         input_mat ([type]): [description]
     """
     print('\n'.join(['\t'.join(['{:.1f}'.format(item) for item in row]) for row in input_mat]))
-
-import pickle
-def pickle_data(list_of_var, **kwargs):
-    filename = get_varargin(kwargs, 'filename', 'untitled.pickle')
-    with open(filename, 'wb') as fid:
-        for var in list_of_var:
-            pickle.dump(var, fid)
+            
 # =================================================================================================================
 # DEBUG
+#%%
+def main(**kwargs):
+    pass
+    # sel_files = select_files(project_dir, ext = ['.h5', '.yaml'])
+    # print(sel_files)
+    
 if __name__ == '__main__':
-    sel_files = select_files(project_dir, ext = ['.h5', '.yaml'])
-    print(sel_files)
+    main()
+# %%
