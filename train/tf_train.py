@@ -31,6 +31,7 @@ import tensorflow as tf
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
+
 # Restrict TensorFlow to only allocate 1GB of memory on the first GPU
     try:
         for gpu in gpus:

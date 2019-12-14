@@ -28,6 +28,7 @@ import math
 import random
 # Visualization
 from vlogging import VisualRecord
+import plotly
 # Utils
 from distutils import spawn
 import time
@@ -36,6 +37,7 @@ import logging
 import vlogging
 import psutil
 from PIL import Image as PILImage
+from tensorflow.python.keras import utils as kerasUtils
 #  DL framework
 from tensorflow.python.client import device_lib
 # =================================================================================================================
@@ -73,44 +75,153 @@ class colorFormatter(logging.Formatter):
 
 class html_colorFormatter(logging.Formatter):
     """Logging Formatter to add colors and count warning / errors"""
-    black = "<p style='color:black; white-space:pre'>"
-    blue = "<p style='color:blue'>"
-    orange = "<p style='color:#ff8c00; font-weight:bold'>"
-    red = "<p style='color:red; font-weight:bold'>"
-    span = "<span style='color: #026440;''>"
-    reset = "</p>"
-    msgformat = '%(asctime)s|%(filename)s:%(lineno)d|%(levelname)s|'
-    FORMATS = {
-        logging.DEBUG: blue + msgformat + "\t" + '%(message)s' + reset,
-        logging.INFO: black + span +  msgformat + "</span>\t" + '%(message)s' + reset,
-        logging.WARNING: orange + msgformat + "\t" + '%(message)s' + reset,
-        logging.ERROR: red + msgformat +"\t"+ '%(message)s' +  reset,
-        logging.CRITICAL: red + msgformat + "\t" + '%(message)s' + reset
-    }
+    def __init__(self, **kwargs):
+        line_height = get_varargin(kwargs, 'line_height', 0.5)
+        black = "<p  style = 'line-height: {}; color:black; white-space:pre'>".format(line_height)
+        blue = "<p style='color:blue'>"
+        orange = "<p style='color:#ff8c00; font-weight:bold'>"
+        red = "<p style='color:red; font-weight:bold'>"
+        span = "<span style='color: #026440;''>"
+        reset = "</p>"
+        msgformat = '%(asctime)s|%(filename)s:%(lineno)d|%(levelname)s|'
+        self.FORMATS = {
+            logging.DEBUG: blue + msgformat + "\t" + '%(message)s' + reset,
+            logging.INFO: black + span +  msgformat + "</span>\t" + '%(message)s' + reset,
+            logging.WARNING: orange + msgformat + "\t" + '%(message)s' + reset,
+            logging.ERROR: red + msgformat +"\t"+ '%(message)s' +  reset,
+            logging.CRITICAL: red + msgformat + "\t" + '%(message)s' + reset
+        }
     def format(self, record):
         message = str(record.msg)
-        message = "<br />".join(message.split("\n"))
         record.msg = message
         log_fmt = self.FORMATS.get(record.levelno)
         formatter = logging.Formatter(log_fmt, datefmt='%y%m%d-%I:%M')
         return formatter.format(record)
+
+class htmlLogger(object):
+    def __init__(self, **kwargs):
+        # Initialize Class
+        default_logfile = os.path.join(current_dir, 'logging.html')
+        write_mode = get_varargin(kwargs, 'mode', 'a')
+        log_file = get_varargin(kwargs, 'log_file', default_logfile)
+        if not os.path.isfile(log_file) or write_mode == 'w':
+            with open(log_file,'w') as fid:
+                fid.write('<head><title>luulog</title></head>')
+
+        file_hdl = logging.FileHandler(log_file, mode = 'a')
+        file_hdl.setFormatter(html_colorFormatter())
+        self.file_hdl = file_hdl
+        self.make_logger()
+        
+    def make_logger(self):
+        html_logger = logging.getLogger()
+        html_logger.addHandler(self.file_hdl)
+        html_logger.setLevel(logging.INFO)
+
+        for h in html_logger.handlers[:-1]:
+            html_logger.removeHandler(h)
+        self.filelogger = html_logger
     
+    def info(self, str):
+        self.custom_print(str)
+        self.filelogger.info(str)
+    
+    def resetFormatter(self):
+        self.setFormatter(line_height = 0.3)
+        
+    
+    def setFormatter(self, **kwargs):
+        line_height = get_varargin(kwargs, 'line_height', 0.5)
+        self.file_hdl.setFormatter(html_colorFormatter(line_height = line_height))
+        self.make_logger()
+    
+    def append_html(self, html_str):
+        self.filelogger.info(html_str)
+    
+    def add_plotly(self, fig,**kwargs):
+        width = get_varargin(kwargs, 'width', 0.6)
+        info = get_varargin(kwargs, 'info','')
+        html_fig = plotly.io.to_html(fig, full_html=False, default_width='{}%'.format(width*100))
+        self.append_html(info + html_fig)
+    
+    def plt_keras_model(self, model, **kwargs):
+        kerasUtils.plot_model(model, to_file = 'model.png')
+        data_uri = base64.b64encode(open('model.png', 'rb').read()).decode('utf-8')
+        img_tag = '<img src="data:image/png;base64,{0}">'.format(data_uri)
+        os.remove('model.png')
+        self.filelogger.info(img_tag)    
+    
+    def log_fig(self, fig, **kwargs):
+        desc = get_varargin(kwargs, 'description', '')
+        img_size = get_varargin(kwargs, 'figsize', (800,600))
+        tmpfile = BytesIO()
+        fig.savefig(tmpfile, format='png')
+        encoded = base64.b64encode(tmpfile.getvalue()).decode('utf-8')
+        html = desc + "<br/>" + "<img src=\'data:image/png;base64,{}\' style = 'width:{}px;height:{}px'>"\
+            .format(encoded,img_size[0],img_size[1])
+        self.filelogger.info(html)    
+    
+    def nvidia_smi(self):
+        self.setFormatter(line_height = 1.2)
+        try:
+            info = check_output(["nvidia-smi"], stderr = STDOUT)
+            info = info.decode("utf8")
+        except Exception as e:
+            info = "Executing nvidia-smi failed: " + str(e)
+        self.info(info.strip())
+        self.resetFormatter()
+    
+    def keras_summary(self, model, **kwargs):
+        model.summary(print_fn = self.info)
+
+    @staticmethod
+    def custom_print(msg, **kwargs):
+        """[summary]
+        Ref: http://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
+        Arguments:
+            msg {[type]} -- [description]
+        """
+        timenow = datetime.now().strftime('%y%m%d-%H:%M')
+        call_fn = inspect.getframeinfo(inspect.stack()[2][0])
+        Black =  " \x1b[30m"
+        Red =    " \x1b[31m"
+        Green =  " \x1b[32m"
+        Yellow = " \x1b[33m"
+        Blue =   " \x1b[34m"
+        Magenta =" \x1b[38;5;200m"
+        Cyan =   " \x1b[38;5;122m"
+        White =  " \x1b[37m"
+        Bold =  " \x1b[1m"
+        Underline =  " \x1b[4m"
+        Reset =  " \x1b[0m"
+        
+        prefix = '{}{}{}|{}:{}|INFO|{}'.format(Bold, Cyan, timenow, 
+                                            os.path.basename(call_fn.filename), call_fn.lineno,
+                                            Reset)
+        c_msg =  '{}{}{}'.format(Magenta, msg, Reset)
+        print(prefix + c_msg)
+
 def logging_setup(**kwargs):
     default_logfile = os.path.join(current_dir, 'logging.html')
     log_file = get_varargin(kwargs, 'log_file', default_logfile)
     # 	Logging
     logger = logging.getLogger()
+    html_logger = logging.getLogger()
+    
     stream_hdl = logging.StreamHandler(sys.stdout)
     file_hdl = logging.FileHandler(log_file, mode = 'a')
     stream_hdl.setFormatter(colorFormatter())
     logger.addHandler(stream_hdl)
     file_hdl.setFormatter(html_colorFormatter())
+    
     logger.addHandler(file_hdl)
     logger.setLevel(logging.INFO)
+    html_logger.addHandler(file_hdl)
+    html_logger.setLevel(logging.INFO)
     # Only keep one logger
     for h in logger.handlers[:-2]: 
         logger.removeHandler(h)
-
+    return logger
 # =================================================================================================================
 # tqdm
 class logging_tqdm(io.StringIO):

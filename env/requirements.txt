@@ -24,6 +24,8 @@ scikit-image
 #    pydot and graphviz for keras plot_model
 pydot
 graphviz
+plotly
+
 # =================================================================================================================
 # FileIO
 pyyaml

@@ -27,7 +27,10 @@ import logging
 import re # for ProgressBar
 import functools
 # Visualization
+import cv2
+import skimage.io as skio
 import matplotlib.pyplot as plt
+from PIL import Image as PILImage
 # =================================================================================================================
 # Custom packages
 user_dir = os.path.expanduser('~')
@@ -261,7 +264,22 @@ def makedir(inputDir):
         os.makedirs(inputDir)
     else:
         logging.info('mkdir: Directory already exist: {}'.format(os.path.abspath(inputDir)))
-        
+
+@verbose
+def make_video(imagelist_filepath, **kwargs):
+    filepath = get_varargin(kwargs, 'to_file', 'generated_video.avi')
+    fps = get_varargin(kwargs, 'fps', 4)
+    frame = cv2.imread(imagelist_filepath[0])
+    height, width, layers = frame.shape
+    
+    video = cv2.VideoWriter(filepath, 0, fps = fps, frameSize = (width, height))
+    # Append image to video
+    for image in imagelist_filepath:
+        video.write(cv2.imread(image))
+    # Clean up
+    cv2.destroyAllWindows()
+    video.release()
+       
 # Download file from url
 @timeit
 def download_url(url, to_file, **kwargs):
@@ -318,7 +336,7 @@ class ProgressBar(object):
             print('\r' + self.fmt % args,  end='')
         else:
             logging.info(self.fmt % args)
-
+        
 def list_fulldir(rootdir, **kwargs):
     get_latest = get_varargin(kwargs, 'get_latest', False)
     dirlist = [os.path.join(rootdir, f) for f in os.listdir(rootdir)]
@@ -343,6 +361,7 @@ def select_files(root_dir, **kwargs):
     and_key = get_varargin(kwargs, 'and_key', None)
     or_key = get_varargin(kwargs, 'or_key', None)
     sel_ext = get_varargin(kwargs, 'ext', ['all'])
+    depth = get_varargin(kwargs, 'depth', 'all')
     # 
     def check_andkeys(filename, and_keys):
         status = True
@@ -355,17 +374,23 @@ def select_files(root_dir, **kwargs):
             status = False
         return status
     fullfile_list = []
-    for path, subdirs, files in os.walk(root_dir):
-        for name in files:
-            fullfile_list.append(os.path.join(path, name))
+    if depth == 'all':
+        for path, subdirs, files in os.walk(root_dir):
+            for name in files:
+                fullfile_list.append(os.path.join(path, name))
+    elif depth == 'root':
+        for name in os.listdir(root_dir):
+            fullfile_list.append(os.path.join(path, name)) 
+    else:
+        pass
     sel_files = []
     for fullfile in fullfile_list:        
-        filename, ext = os.path.splitext(os.path.split(fullfile)[1])
-        if set([ext]).issubset(set(sel_ext)) or sel_ext[0] == 'all':
-            and_check = check_andkeys(fullfile, and_key)
-            or_check = check_orkeys(fullfile, or_key)
-            if and_check and or_check:
-                sel_files.append(fullfile)
+        # filename, ext = os.path.splitext(os.path.split(fullfile)[1])
+        # if set([ext]).issubset(set(sel_ext)) or sel_ext[0] == 'all':
+        and_check = check_andkeys(fullfile, and_key)
+        or_check = check_orkeys(fullfile, or_key)
+        if and_check and or_check:
+            sel_files.append(fullfile)
     return sel_files
 # =================================================================================================================
 def list_modules(input_package, **kwargs):
@@ -411,6 +436,9 @@ def print_ndarray(input_mat):
             
 # =================================================================================================================
 # DEBUG
+file_list = select_files('/media/phatluu/Ubuntu_D/outputs', and_key = ['mnist', 'png'])
+# print(file_list)
+make_video(file_list)
 #%%
 def main(**kwargs):
     pass

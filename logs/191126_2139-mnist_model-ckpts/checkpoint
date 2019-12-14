@@ -1,2 +1,2 @@
-model_checkpoint_path: "mnist_model-ckpts-0036.ckpt"
-all_model_checkpoint_paths: "mnist_model-ckpts-0036.ckpt"
+model_checkpoint_path: "mnist_model-ckpts-0040.ckpt"
+all_model_checkpoint_paths: "mnist_model-ckpts-0040.ckpt"
