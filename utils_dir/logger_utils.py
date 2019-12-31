@@ -145,9 +145,15 @@ class htmlLogger(object):
         self.append_html(info + html_fig)
     
     def plt_keras_model(self, model, **kwargs):
-        kerasUtils.plot_model(model, to_file = 'model.png')
-        data_uri = base64.b64encode(open('model.png', 'rb').read()).decode('utf-8')
-        img_tag = '<img src="data:image/png;base64,{0}">'.format(data_uri)
+        desc = get_varargin(kwargs, 'description', '')
+        img_size = get_varargin(kwargs, 'figsize', (500,800))
+        kerasUtils.plot_model(model, to_file = 'model.png',
+                              show_shapes = True,
+                              dpi = 120,
+                              expand_nested = True)
+        encoded = base64.b64encode(open('model.png', 'rb').read()).decode('utf-8')
+        img_tag = desc + "<br/><br/>" + "<img src=\'data:image/png;base64,{}\' style = 'width:{}px;height:{}px'>"\
+            .format(encoded,img_size[0],img_size[1])
         os.remove('model.png')
         self.filelogger.info(img_tag)    
     
@@ -157,7 +163,7 @@ class htmlLogger(object):
         tmpfile = BytesIO()
         fig.savefig(tmpfile, format='png')
         encoded = base64.b64encode(tmpfile.getvalue()).decode('utf-8')
-        html = desc + "<br/>" + "<img src=\'data:image/png;base64,{}\' style = 'width:{}px;height:{}px'>"\
+        html = desc + "<br/><br/>" + "<img src=\'data:image/png;base64,{}\' style = 'width:{}px;height:{}px'>"\
             .format(encoded,img_size[0],img_size[1])
         self.filelogger.info(html)    
     

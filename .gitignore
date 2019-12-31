@@ -33,6 +33,7 @@ tf_logs
 *.pdf
 *.mp4
 *.avi
+*.html
 #pickle files
 *.pkl
 *.pickle

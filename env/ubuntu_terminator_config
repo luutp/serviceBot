@@ -1,0 +1,117 @@
+[global_config]
+  enabled_plugins = CustomCommandsMenu, ActivityWatch, LaunchpadCodeURLHandler, APTURLHandler, LaunchpadBugURLHandler
+  suppress_multiple_term_dialog = True
+  title_font = Monospace Bold 12
+  title_transmit_bg_color = "#28B463"
+  title_transmit_fg_color = "#17202A"
+  title_use_system_font = False
+[keybindings]
+  close_window = <Ctrl>F4
+  full_screen = F5
+[layouts]
+  [[default]]
+    [[[child0]]]
+      fullscreen = False
+      last_active_term = b98a8f0d-c1bb-4fd1-ba86-ad7bafbd88b1
+      last_active_window = True
+      maximised = True
+      order = 0
+      parent = ""
+      position = 65:24
+      size = 1855, 1056
+      title = phatluu@phatluu-ubuntu1604: ~
+      type = Window
+    [[[child1]]]
+      order = 0
+      parent = child0
+      position = 922
+      ratio = 0.498652291105
+      type = HPaned
+    [[[child2]]]
+      order = 0
+      parent = child1
+      position = 669
+      ratio = 0.636363636364
+      type = VPaned
+    [[[child3]]]
+      order = 0
+      parent = child2
+      position = 275
+      ratio = 0.415545590433
+      type = VPaned
+    [[[child7]]]
+      order = 1
+      parent = child1
+      position = 525
+      ratio = 0.5
+      type = VPaned
+    [[[terminal4]]]
+      directory = ~/catkin_ws_arm
+      order = 0
+      parent = child3
+      profile = ros
+      type = Terminal
+      uuid = e4b46454-84b9-410a-a5b0-5c289db5ad2b
+    [[[terminal5]]]
+      order = 1
+      parent = child3
+      profile = ros
+      type = Terminal
+      uuid = a2905b5b-cf76-483b-9d97-c4828e561167
+    [[[terminal6]]]
+      order = 1
+      parent = child2
+      profile = ros
+      type = Terminal
+      uuid = a405d89d-1ee0-4084-8444-91e3e0cfa62a
+    [[[terminal8]]]
+      order = 0
+      parent = child7
+      profile = ros
+      type = Terminal
+      uuid = 53222af8-848b-48e6-804d-72144307a5e3
+    [[[terminal9]]]
+      order = 1
+      parent = child7
+      profile = ros
+      type = Terminal
+      uuid = b98a8f0d-c1bb-4fd1-ba86-ad7bafbd88b1
+[plugins]
+  [[CustomCommandsMenu]]
+    [[[roslaunch-Controller]]]
+      command = roslaunch open_manipulator_controller open_manipulator_controller.launch
+      enabled = True
+      name = roslaunch-Controller
+      position = 0
+    [[[roslaunch-Keyboard_ctrl]]]
+      command = roslaunch open_manipulator_teleop open_manipulator_teleop_keyboard.launch
+      enabled = True
+      name = roslaunch-Keyboard_ctrl
+      position = 2
+    [[[roslaunch-Moveit]]]
+      command = roslaunch open_manipulator_controller open_manipulator_controller.launch use_moveit:=true
+      enabled = True
+      name = roslaunch-Moveit
+      position = 3
+    [[[roslaunch-RViz]]]
+      command = roslaunch open_manipulator_description open_manipulator_rviz.launch
+      enabled = True
+      name = roslaunch-RViz
+      position = 1
+[profiles]
+  [[default]]
+    background_image = None
+    font = Monospace 12
+    palette = "#000000:#aa0000:#00aa00:#aa5500:#0000aa:#aa00aa:#00aaaa:#aaaaaa:#555555:#ff5555:#55ff55:#ffff55:#5555ff:#ff55ff:#55ffff:#ffffff"
+    split_to_group = True
+    use_system_font = False
+  [[ros]]
+    background_color = "#212121"
+    background_image = None
+    cursor_color = "#F8F9F9"
+    cursor_shape = underline
+    font = Monospace 12
+    foreground_color = "#ce93d8"
+    palette = "#000000:#cd0000:#00cd00:#cdcd00:#0000ee:#cd00cd:#00cdcd:#e5e5e5:#7f7f7f:#ff0000:#00ff00:#ffff00:#5c5cff:#ff00ff:#00ffff:#ffffff"
+    split_to_group = True
+    use_system_font = False

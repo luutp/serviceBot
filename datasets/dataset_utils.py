@@ -98,16 +98,22 @@ def show_traintest_info(X_train, y_train, X_test, y_test, **kwargs):
     plt.show()
 # =================================================================================================================
 # Plot training samples
-def plt_samples(img_list, labels, **kwargs):
+def plt_samples(img_list, **kwargs):
     figsize = get_varargin(kwargs, 'figsize', (6,6))
     nb_cols = get_varargin(kwargs, 'nb_cols', 3)
     nb_img = len(img_list)
+    labels = get_varargin(kwargs, 'labels', [None]*nb_img)
+    cmap = get_varargin(kwargs, 'cmap', 'gray_r')
+    suptitle = get_varargin(kwargs, 'suptitle', 'Train Images Samples')
     nb_rows = np.ceil(nb_img/nb_cols)
     fig = plt.figure(figsize = figsize)
     for idx, (img, label) in enumerate(zip(img_list, labels)):
         ax = fig.add_subplot(nb_rows, nb_cols, idx+1)
-        plt.imshow(img)
+        plt.imshow(img, cmap = cmap)
+        plt.axis('off')
         ax.set_title(label)
+        plt.suptitle(suptitle)
+    return fig
 # =================================================================================================================
 
 # Download images from google search

@@ -98,6 +98,32 @@ def verbose(_func = None, *, desc = None):
     else:
         return decorator_verbose(_func)
     
+def custom_print(msg, **kwargs):
+    """[summary]
+    Ref: http://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
+    Arguments:
+        msg {[type]} -- [description]
+    """
+    timenow = datetime.now().strftime('%y%m%d-%H:%M')
+    call_fn = inspect.getframeinfo(inspect.stack()[2][0])
+    Black =  " \x1b[30m"
+    Red =    " \x1b[31m"
+    Green =  " \x1b[32m"
+    Yellow = " \x1b[33m"
+    Blue =   " \x1b[34m"
+    Magenta =" \x1b[38;5;200m"
+    Cyan =   " \x1b[38;5;122m"
+    White =  " \x1b[37m"
+    Bold =  " \x1b[1m"
+    Underline =  " \x1b[4m"
+    Reset =  " \x1b[0m"
+    
+    prefix = '{}{}{}|{}:{}|INFO|{}'.format(Bold, Cyan, timenow, 
+                                        os.path.basename(call_fn.filename), call_fn.lineno,
+                                        Reset)
+    c_msg =  '{}{}{}'.format(Magenta, msg, Reset)
+    print(prefix + c_msg)    
+    
 # Decorator
 def savefig(_func = None, *, filepath = None):
     def decorator_savefig(func):
@@ -392,6 +418,12 @@ def select_files(root_dir, **kwargs):
         if and_check and or_check:
             sel_files.append(fullfile)
     return sel_files
+
+def elapsed_time(start_time, **kwargs):
+    elapsed_time = (time.time() - start_time)
+    hours, rem = divmod(elapsed_time, 3600)
+    minutes, seconds = divmod(rem, 60)
+    return hours, minutes, seconds
 # =================================================================================================================
 def list_modules(input_package, **kwargs):
     mlist = [name for _,name,_ in pkgutil.iter_modules([os.path.dirname(input_package.__file__)])]
