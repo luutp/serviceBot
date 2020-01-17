@@ -1,8 +1,8 @@
 #!/bin/bash
 echo "Setup Conda Environment"
-#  Define 
+# #  Define 
 DOWNLOAD_DIR=/home/$USER/Downloads
-CONDA_ENV=tpluu
+CONDA_ENV=tf2
 PIP_REQUIREMENTS=~/serviceBot/env/requirements.txt
 ## Add user to sudo
 sudo usermod -aG sudo $USER
@@ -23,6 +23,17 @@ conda activate $CONDA_ENV
 # Conda Install
 conda install -y nodejs -n $CONDA_ENV
 conda install -y tensorflow-gpu -n $CONDA_ENV
+conda install -y -c conda-forge ipympl -n $CONDA_ENV
 
-# pip install
-pip install -r $PIP_REQUIREMENTS
+# # pip install
+echo "Installing PIP requirements"
+/home/$USER/anaconda3/envs/$CONDA_ENV/bin/pip install -r $PIP_REQUIREMENTS
+# update ipympl for interactive plot
+/home/$USER/anaconda3/envs/$CONDA_ENV/bin/pip git+https://github.com/matplotlib/jupyter-matplotlib.git#egg=ipympl 
+# Jupyterlab setup
+echo "Installing Jupyterlab Extension"
+jupyter labextension install @jupyter-widgets/jupyterlab-manager
+jupyter labextension install jupyter-matplotlib
+jupyter labextension install @jupyterlab/toc
+# Update and rebuild jupyterlab extenstion
+jupyter labextension update --all && jupyter lab build && jupyter labextension list

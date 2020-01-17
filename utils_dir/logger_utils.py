@@ -27,14 +27,12 @@ import base64
 import math
 import random
 # Visualization
-from vlogging import VisualRecord
 import plotly
 # Utils
 from distutils import spawn
 import time
 from datetime import datetime
 import logging
-import vlogging
 import psutil
 from PIL import Image as PILImage
 from tensorflow.python.keras import utils as kerasUtils

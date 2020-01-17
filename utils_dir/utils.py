@@ -27,10 +27,16 @@ import logging
 import re # for ProgressBar
 import functools
 # Visualization
+for path in sys.path:
+    print(path)
+    if 'python2.7' in path:
+        print('Removing path: {}'.format(path))
+        sys.path.remove(path)
 import cv2
 import skimage.io as skio
 import matplotlib.pyplot as plt
 from PIL import Image as PILImage
+#%%
 # =================================================================================================================
 # Custom packages
 user_dir = os.path.expanduser('~')
@@ -452,6 +458,18 @@ def show_obj_params(obj):
     for key, val in zip(obj.__dict__.keys(), obj.__dict__.values()):
         print('{} : {} '.format(key, val))
 
+def att_lookup(class_name, **kwargs):
+    att_list = dir(class_name)
+    keyword = get_varargin(kwargs, 'key', None)
+    output = []
+    if keyword is None:
+        output = att_list
+    else:
+        for att in att_list:
+            if keyword in att.lower():
+                output.append(att)
+    display(output)
+    
 def print_dict(input_dict):
     # print(json.dumps(input_dict, indent = 2))
     for key, val in input.items():

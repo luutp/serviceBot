@@ -7,7 +7,7 @@ jupyterlab
 # =================================================================================================================
 # Computer vision and AI
 opencv-python
-tensorflow-datasets
+# tensorflow-datasets
 #   Python image lib, PIL
 Pillow 
 # =================================================================================================================
@@ -25,7 +25,6 @@ scikit-image
 pydot
 graphviz
 plotly
-
 # =================================================================================================================
 # FileIO
 pyyaml
@@ -33,8 +32,9 @@ requests
 # =================================================================================================================
 # Utilities
 easydict
-google_images_download
+# google_images_download
 requests
+missingno
 #   pathlib to deal with path format on different OS
 pathlib
 #   Progress bar
