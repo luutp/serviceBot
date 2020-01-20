@@ -35,8 +35,6 @@ import skimage.io as skio
 ros_path = '/opt/ros/kinetic/lib/python2.7/dist-packages'
 if ros_path in sys.path:
     sys.path.remove(ros_path)
-    
-import cv2
 #	Utilities
 from tqdm import tqdm
 import time
@@ -52,7 +50,8 @@ if not (project_dir in sys.path):
 from utils_dir.utils import timeit, get_varargin, verbose
 import  utils_dir.utils as utils
 from utils_dir import logger_utils as logger_utils
-icons_dir = os.path.join(project_dir, 'icons')
+from icons.iconClass import iconClass
+pyIcons = iconClass(icon_dir = os.path.join(project_dir, 'icons'))
 logger = logger_utils.htmlLogger(log_file = os.path.join(project_dir, '{}_GUIlogging.html'\
     .format(datetime.now().strftime('%y%m%d'))), mode = 'w')
 logger.info('START -- project dir: {}'.format(project_dir))
@@ -92,6 +91,9 @@ def show_msg_dialog(**kwargs):
     
 def uigridcomp(**kwargs):
     layout_type = get_varargin(kwargs, 'layout', 'horizontal') 
+    font = get_varargin(kwargs, 'font', QFont('Arial', 11, QFont.Normal))
+    groupbox = get_varargin(kwargs, 'groupbox', None)
+    groupbox_icon = get_varargin(kwargs, 'groupbox_icon', None)
     comp_list = get_varargin(kwargs, 'components', None)
     nb_comps = len(comp_list)
     icon_path_list = get_varargin(kwargs, 'icons', [None]*nb_comps)
@@ -121,10 +123,10 @@ def uigridcomp(**kwargs):
         py_comp = None
         if comp == 'pushbutton':
             py_comp = QPushButton(label)
-            py_comp.setIcon(QIcon(QPixmap(icon)))
+            py_comp.setIcon(QIcon(icon))
         elif comp == 'togglebutton':
             py_comp = QPushButton(label)
-            py_comp.setIcon(QIcon(QPixmap(icon)))
+            py_comp.setIcon(QIcon(icon))
             py_comp.setCheckable(Tru)
             py_comp.toggle()
         elif comp == 'hSlider':
@@ -133,41 +135,63 @@ def uigridcomp(**kwargs):
             py_comp = create_slider(type = 'vertical')
         elif comp == 'edit':
             py_comp = QLineEdit(label)
+        elif comp == 'combobox':
+            py_comp = QComboBox()            
+            py_comp.setInsertPolicy(QComboBox.InsertAtTop)
+            py_comp.addItems(label)
         elif comp == 'label':
             py_comp = QLabel(label)
         elif comp == 'list':
             py_comp = QListWidget()
-            for l in label:
-                py_comp.addItem(l)
+            py_comp.addItems(label)
+            # py_comp.setSelectionMode(QAbstractItemView.MultiSelection)
+        elif comp == 'radio':
+            py_comp = QRadioButton(label)
+            py_comp.setIcon(QIcon(icon))
         elif comp == 'blank':
             layout.addStretch(0)
         if comp != 'blank':
+            py_comp.setFont(font)
             output_widgets.append(py_comp)
             layout.addWidget(py_comp, ratio)
-    return layout, output_widgets
+        
+    if groupbox is not None:
+        groupbox_obj = QGroupBox(groupbox)
+        gbox_font = font
+        gbox_font.setBold(True)
+        groupbox_obj.setFont(gbox_font)
+        groupbox_obj.setLayout(layout)
+        return groupbox_obj, output_widgets
+    else:
+        return layout, output_widgets
 
-class Form(QDialog):
-    def __init__(self, parent=None):
-        super(Form, self).__init__(parent)
-        self.icons_dir = icons_dir
-        self.layout1, self.layout1_widgets = uigridcomp(components = ['pushbutton', 'edit'], 
-                                           icons = [os.path.join(self.icons_dir, 'python.png'), None, None],
-                                           labels = ['Browse...', ''],
+class Form(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.layout1, self.layout1_widgets = uigridcomp(components = ['pushbutton', 'combobox'], 
+                                           icons = [pyIcons.fileIO.python, None, None],
+                                           labels = ['Browse...', ['/home/phatluu', project_dir]],
+                                           groupbox = 'Explorer', 
                                            ratios = [20, 80])  
         self.layout2, self.layout2_widgets = uigridcomp(components = ['list'], 
                                            icons = [None],
                                            labels = [['List Item 1', 'List Item 2', 'List Item 3']])  
+        # self.layout2, self.layout2_widgets = uigridcomp(components = ['radio','radio','radio'], 
+        #                                    icons = [pyIcons.fileIO.folder, None, None],
+        #                                    labels = ['File 1', 'File 2', 'File 3'],
+        #                                    groupbox = 'Radio Group')  
+        
         self.layout3, self.layout3_widgets = uigridcomp(layout = 'horizontal', components = ['hSlider', 'edit'],
-                                                        ratios = [75, 25])  
-        print(dir(self.layout3_widgets[0]))
+                                                        ratios = [75, 25],
+                                                        groupbox = 'Slider') 
         self.set_layout()
         self.define_callback()
         
     def set_layout(self):
         self.layout = QVBoxLayout()
-        self.layout.addLayout(self.layout1)
+        self.layout.addWidget(self.layout1)
         self.layout.addLayout(self.layout2)
-        self.layout.addLayout(self.layout3)
+        self.layout.addWidget(self.layout3)
         self.setLayout(self.layout)        
     
     def initialize(self):
@@ -176,15 +200,61 @@ class Form(QDialog):
     # Define callback functions
     def define_callback(self):
         self.layout1_widgets[0].clicked.connect(lambda:self.pushbutton_browse_callback(self.layout1_widgets[0]))
+        self.layout1_widgets[1].currentIndexChanged.connect(lambda:self.combobox_browse_callback(self.layout1_widgets[1]))
+        self.layout2_widgets[0].doubleClicked.connect(lambda:self.listbox_browse_callback(self.layout2_widgets[0]))
         self.layout3_widgets[0].valueChanged.connect(lambda:self.slider_edit_callback(self.layout3_widgets[0]))
         self.layout3_widgets[1].editingFinished.connect(lambda:self.edit_slider_callback(self.layout3_widgets[1]))
         
     # Callbacks
     @log_info
     def pushbutton_browse_callback(self, hObject):
-        print('button pressed')
-        self.layout1_widgets[1].setText('Browsing...')
+        dlg = QFileDialog(self, 'Select Directory', project_dir)
+        dlg.setFileMode(QFileDialog.Directory)
+        sel_dir = None
+        if dlg.exec_():
+            sel_dir = dlg.selectedFiles()[0]
+        if sel_dir is not None:            
+            self.layout1_widgets[1].insertItem(0, QIcon(pyIcons.fileIO.folder), sel_dir)
+            self.layout1_widgets[1].setCurrentIndex(0)
+    
+    @log_info
+    def combobox_browse_callback(self, hObject):
+        currentVal = hObject.currentText()
+        file_list = utils.select_files(currentVal, depth = 'root')
+        self.layout2_widgets[0].clear()
+        for f in file_list:
+            item = QListWidgetItem(f)
+            file_type = os.path.splitext(f)[1]
+            if not file_type:
+                item.setIcon(QIcon(pyIcons.fileIO.folder))                
+            elif file_type == '.py':
+                item.setIcon(QIcon(pyIcons.fileIO.python))
+            elif file_type == '.html':
+                item.setIcon(QIcon(pyIcons.fileIO.html))
+            elif file_type == '.ipynb':
+                item.setIcon(QIcon(pyIcons.fileIO.ipynb))
+            elif file_type == '.yaml':
+                item.setIcon(QIcon(pyIcons.fileIO.yaml))
+            elif file_type == '.json':
+                item.setIcon(QIcon(pyIcons.fileIO.json))
+            elif set([file_type]).issubset(set(['.png', '.jpg', '.svg','.gif'])):
+                item.setIcon(QIcon(pyIcons.fileIO.image))
+            elif set([file_type]).issubset(set(['.xlsx', '.csv', '.xls'])):
+                item.setIcon(QIcon(pyIcons.fileIO.excel))
+            elif set([file_type]).issubset(set(['.txt', '.md'])):
+                item.setIcon(QIcon(pyIcons.fileIO.txt))
+            else:
+                pass 
+            self.layout2_widgets[0].addItem(item)
+        self.layout2_widgets[0].setIconSize(QSize(16,16)) 
         
+    @log_info
+    def listbox_browse_callback(self, hObject):
+        sel_item = [str(x.text()) for x in hObject.selectedItems()][0]
+        if os.path.isdir(sel_item):
+            self.layout1_widgets[1].insertItem(0, QIcon(pyIcons.fileIO.folder), sel_item)
+            self.layout1_widgets[1].setCurrentIndex(0)
+            
     @log_info
     def slider_edit_callback(self, hObject):
         edit = self.layout3_widgets[1]
@@ -213,10 +283,9 @@ def main():
     window = Form()
     window.setGeometry(4000, 100, 500, 500)
     window.setWindowTitle("PyQT Luu")
+    # window.setWindowIcon(QIcon('/home/serviceBot/icons/python.png'))
     window.show()
-    app.exec_()
-main()
-#%%
+    sys.exit(app.exec_())
 # =================================================================================================================
 # DEBUG
 if __name__ == '__main__':

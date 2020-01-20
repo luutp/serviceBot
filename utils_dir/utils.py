@@ -412,7 +412,7 @@ def select_files(root_dir, **kwargs):
                 fullfile_list.append(os.path.join(path, name))
     elif depth == 'root':
         for name in os.listdir(root_dir):
-            fullfile_list.append(os.path.join(path, name)) 
+            fullfile_list.append(os.path.join(root_dir, name)) 
     else:
         pass
     sel_files = []
