@@ -417,12 +417,12 @@ def select_files(root_dir, **kwargs):
         pass
     sel_files = []
     for fullfile in fullfile_list:        
-        # filename, ext = os.path.splitext(os.path.split(fullfile)[1])
-        # if set([ext]).issubset(set(sel_ext)) or sel_ext[0] == 'all':
-        and_check = check_andkeys(fullfile, and_key)
-        or_check = check_orkeys(fullfile, or_key)
-        if and_check and or_check:
-            sel_files.append(fullfile)
+        filename, ext = os.path.splitext(os.path.split(fullfile)[1])
+        if set([ext]).issubset(set(sel_ext)) or sel_ext[0] == 'all':
+            and_check = check_andkeys(fullfile, and_key)
+            or_check = check_orkeys(fullfile, or_key)
+            if and_check and or_check:
+                sel_files.append(fullfile)
     return sel_files
 
 def elapsed_time(start_time, **kwargs):

@@ -17,7 +17,6 @@ import inspect, sys
 import argparse
 #	File IO
 import json
-from pathlib import Path
 import functools
 #	Data Analytics
 import pandas as pd
@@ -29,6 +28,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 #	Visualization Packages
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 import skimage.io as skio
 # Custom packages
@@ -99,6 +100,16 @@ def html_text(icon_path, text, **kwargs):
     html_label = html_icon + html_text
     return html_label
 
+def clone_file(input_filepath, output_filepath, **kwargs):
+    # filepath = os.path.join(project_dir, 'pyqt.py')
+    # output_filepath = os.path.join(project_dir, 'pyqt_copy.py')
+    with open(input_filepath, 'r') as fid:
+        output = fid.readlines()
+    
+    with open(output_filepath, 'w') as fid:
+        for line in output:
+            fid.write(line)
+
 def uigridcomp(**kwargs):
     layout_type = get_varargin(kwargs, 'layout', 'horizontal') 
     font = get_varargin(kwargs, 'font', QFont('Arial', 11, QFont.Normal))
@@ -148,7 +159,9 @@ def uigridcomp(**kwargs):
         elif comp == 'combobox':
             py_comp = QComboBox()            
             py_comp.setInsertPolicy(QComboBox.InsertAtTop)
-            py_comp.addItems(label)
+            for ic, txt in zip(icon, label):
+                py_comp.addItem(QIcon(ic), txt)
+            # QIcon(pyIcons.fileIO.folder), sel_dir)
         elif comp == 'label':
             py_comp = QLabel(label)
         elif comp == 'list':
@@ -160,7 +173,8 @@ def uigridcomp(**kwargs):
             py_comp.setIcon(QIcon(icon))
         elif comp == 'blank':
             layout.addStretch(0)
-        if comp != 'blank':
+       
+        if not set([comp]).issubset(set(['blank'])):
             py_comp.setFont(font)
             output_widgets.append(py_comp)
             layout.addWidget(py_comp, ratio)
@@ -183,27 +197,31 @@ class Form(QMainWindow):
         self.setCentralWidget(QWidget(self))
         
         self.layout1, self.layout1_widgets = uigridcomp(components = ['pushbutton', 'combobox'], 
-                                           icons = [pyIcons.fileIO.open_folder, None, None],
+                                           icons = [pyIcons.fileIO.open_folder, [pyIcons.fileIO.folder]*2],
                                            labels = ['Browse...', ['/home/phatluu', project_dir]],                            
                                            ratios = [20, 80])  
         self.layout2, self.layout2_widgets = uigridcomp(components = ['list'], 
                                            icons = [None],
                                            labels = [['List Item 1', 'List Item 2', 'List Item 3']])  
-        # self.layout2, self.layout2_widgets = uigridcomp(components = ['radio','radio','radio'], 
-        #                                    icons = [pyIcons.fileIO.folder, None, None],
-        #                                    labels = ['File 1', 'File 2', 'File 3'],
-        #                                    groupbox = 'Radio Group')  
+        self.layout3, self.layout3_widgets = uigridcomp(components = ['edit', 'combobox', 'pushbutton'], 
+                                           icons = [None, [pyIcons.fileIO.python]*2, pyIcons.action.save],
+                                           labels = [None, ['py', 'pyGUI'], 'Save'],
+                                           groupbox = 'Output File',
+                                           ratios = [60, 20,20])
+        self.layout4 = QVBoxLayout()
+        figure = Figure()
+        canvas = FigureCanvasQTAgg(figure)
+        self.layout4.addWidget(canvas)
+        self.layout4_ax = figure.add_subplot(111)
         
-        self.layout3, self.layout3_widgets = uigridcomp(layout = 'horizontal', components = ['hSlider', 'edit'],
-                                                        ratios = [75, 25],
-                                                        groupbox = 'Slider') 
         self.set_layout()
         self.define_callback()
         self.initialize()
         self.set_main_window()
-        
+    
     def set_layout(self):
-        main_layout = QVBoxLayout()
+        main_layout = QHBoxLayout()
+        col1_layout = QVBoxLayout()
         def add_layouts(current_layout, layout_list, **kwargs):
             nb_comps = len(layout_list)
             ratio_list = get_varargin(kwargs, 'ratio',[np.floor(100/nb_comps)]*nb_comps)
@@ -213,15 +231,17 @@ class Form(QMainWindow):
                     current_layout.addWidget(layout, ratio)
                 else:
                     current_layout.addLayout(layout, ratio)
-        add_layouts(main_layout, [self.layout1, self.layout2, self.layout3], 
+        add_layouts(col1_layout, [self.layout1, self.layout2, self.layout3], 
                     ratio = [0.2, 0.6, 0.2])
+        add_layouts(main_layout, [col1_layout, self.layout4], 
+                    ratio = [40, 60])
         # self.setLayout(main_layout)    
         self.centralWidget().setLayout(main_layout)   
     
     def set_main_window(self):
         # Window settings
-        self.setGeometry(4000, 100, 500, 500)
-        self.setWindowTitle("PyQT Luu")
+        self.setGeometry(4000, 100, 1000, 700)
+        self.setWindowTitle("PyGUI Make File Template")
         self.setWindowIcon(QIcon(pyIcons.fileIO.html))
         # Add menu bar
         menu_bar = self.menuBar()
@@ -251,13 +271,10 @@ class Form(QMainWindow):
         label_widget.setTextFormat(Qt.RichText)
         # label_widget.setText(self.html_text(pyIcons.fileIO.python, 'Phat Luu'))
         label_widget.setText('v.1.0.0')
-        
         progress_bar = QProgressBar()
         progress_bar.setValue(0)
-        
         statusBar.addWidget(progress_bar)
         statusBar.addPermanentWidget(label_widget)
-        
         # 
         self.show()
         
@@ -268,15 +285,18 @@ class Form(QMainWindow):
         
     def initialize(self):
         self.combobox_browse_callback(self.layout1_widgets[1])
-        self.slider_edit_callback(self.layout3_widgets[0])
+        self.layout3_widgets[0].setText('untitled.py')
         
+        time = np.arange(0,2*3.14,0.1)
+        self.layout4_ax.plot(time, np.sin(time))
     # Define callback functions
     def define_callback(self):
         self.layout1_widgets[0].clicked.connect(lambda:self.pushbutton_browse_callback(self.layout1_widgets[0]))
         self.layout1_widgets[1].currentIndexChanged.connect(lambda:self.combobox_browse_callback(self.layout1_widgets[1]))
         self.layout2_widgets[0].doubleClicked.connect(lambda:self.listbox_browse_callback(self.layout2_widgets[0]))
-        self.layout3_widgets[0].valueChanged.connect(lambda:self.slider_edit_callback(self.layout3_widgets[0]))
-        self.layout3_widgets[1].editingFinished.connect(lambda:self.edit_slider_callback(self.layout3_widgets[1]))
+        self.layout3_widgets[2].clicked.connect(lambda:self.pushbutton_save_callback(self.layout3_widgets[2]))
+        # self.layout3_widgets[0].valueChanged.connect(lambda:self.slider_edit_callback(self.layout3_widgets[0]))
+        # self.layout3_widgets[1].editingFinished.connect(lambda:self.edit_slider_callback(self.layout3_widgets[1]))
     # Callbacks
     @log_info
     def pushbutton_browse_callback(self, hObject):
@@ -326,7 +346,23 @@ class Form(QMainWindow):
         if os.path.isdir(sel_item):
             self.layout1_widgets[1].insertItem(0, QIcon(pyIcons.fileIO.folder), sel_item)
             self.layout1_widgets[1].setCurrentIndex(0)
-            
+    
+    @log_info
+    def pushbutton_save_callback(self, hObject):
+        output_filename = self.layout3_widgets[0].text()
+        file_type = self.layout3_widgets[1].currentText()
+        output_dir = self.layout1_widgets[1].currentText()
+        
+        template_py = os.path.join(project_dir, 'template_py.py')
+        output_filepath = os.path.join(output_dir, output_filename)
+        if file_type.lower() == 'py':
+            logger.info('Making python template file')
+            source_file = template_py
+        else:
+            pass
+        clone_file(source_file, output_filepath)
+        self.combobox_browse_callback(self.layout1_widgets[1])
+    
     @log_info
     def slider_edit_callback(self, hObject):
         edit = self.layout3_widgets[1]
@@ -351,11 +387,7 @@ class Form(QMainWindow):
     
     
 def main():
-    # app = QApplication.instance()
-    # if app is None:
     app = QApplication(sys.argv)
-    # else:
-        # print('QApplication instance already exists: %s' % str(app))
     window = Form()
     sys.exit(app.exec_())
 # =================================================================================================================
