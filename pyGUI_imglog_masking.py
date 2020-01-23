@@ -28,9 +28,13 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 #	Visualization Packages
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpl_patches
+import matplotlib.widgets as mpl_widgets
+from  matplotlib.path import Path
 import skimage.io as skio
 # Custom packages
 ros_path = '/opt/ros/kinetic/lib/python2.7/dist-packages'
@@ -129,7 +133,55 @@ def matplotlib_canvas(**kwargs):
     canvas = FigureCanvasQTAgg(figure)
     layout.addWidget(canvas)
     return layout, figure
-    # layout = figure.add_subplot(111)
+
+@log_info
+def draw_rectangle(topleft, width, height, ax):
+    rect = mpl_patches.Rectangle(topleft, width, height, linewidth = 1, edgecolor = 'r')
+    ax.add_patch(rect)
+    plt.show()
+    return rect
+
+class beddingManager(object):
+    def __init__(self, artists, **kwargs):
+        tolerance = get_varargin(kwargs, 'tolerance', 5)
+        for artist in artists:
+            artist.set_picker(tolerance)
+        self.artists = artists
+        self.currently_dragging = False
+        self.current_artist = None
+        self.offset = (0, 0)
+        # self.fig = fig
+        for canvas in set(artist.figure.canvas for artist in self.artists):
+            print(canvas)
+            canvas.mpl_connect('button_press_event', self.on_press)
+            canvas.mpl_connect('button_release_event', self.on_release)
+            canvas.mpl_connect('pick_event', self.on_pick)
+            canvas.mpl_connect('motion_notify_event', self.on_motion)
+
+    def on_press(self, event):
+        print("Bedding selected")
+        self.currently_dragging = True
+
+    def on_release(self, event):
+        self.currently_dragging = False
+        self.current_artist = None
+
+    def on_pick(self, event):
+        if self.current_artist is None:
+            self.current_artist = event.artist
+            x0, y0 = event.artist.center
+            x1, y1 = event.mouseevent.xdata, event.mouseevent.ydata
+            self.offset = (x0 - x1), (y0 - y1)
+
+    def on_motion(self, event):
+        if not self.currently_dragging:
+            return
+        if self.current_artist is None:
+            return
+        dx, dy = self.offset
+        self.current_artist.center = event.xdata + dx, event.ydata + dy
+        self.current_artist.figure.canvas.draw()
+        # self.fig.canvas.draw()
 
 def uigridcomp(**kwargs):
     layout_type = get_varargin(kwargs, 'layout', 'horizontal') 
@@ -233,8 +285,9 @@ class Form(QMainWindow):
                                            groupbox = 'Selected File',
                                            ratios = [60, 20,20])
         
-        self.layout4, self.layout4_fig = matplotlib_canvas(layout = 'vertical')
-        self.layout4_ax = self.layout4_fig.add_subplot(111)
+        self.layout4, self.fig = matplotlib_canvas(layout = 'vertical')
+        
+        self.ax = self.fig.add_subplot(111)
         
         self.layout5, self.layout5_widgets = uigridcomp(components = ['label','hSlider', 'edit','label',
                                                                       'label', 'hSlider', 'edit'],
@@ -335,7 +388,87 @@ class Form(QMainWindow):
         self.layout3_widgets[0].setText('untitled.py')
         
         time = np.arange(0,2*3.14,0.1)
-        self.layout4_ax.plot(time, np.sin(time))
+        # self.ax.plot(time, np.sin(time))
+        blank_img = np.zeros((720, 360), dtype = np.uint8)
+        self.ax.imshow(blank_img)
+        # self.circle = mpl_patches.Circle([100, 100], radius = 50, color = 'b', fill = False)
+        # #use add_patch instead, it's more clear what you are doing
+        # self.ax.add_patch(self.circle)
+        self.ax.set_aspect('equal')
+        
+        # circles = [mpl.patches.Circle((100, 100), 50, fc='r', alpha=0.5, picker = 5),
+        #            mpl.patches.Circle((50, 50), 50, fc='b', alpha=0.5, picker = 5)]
+        # for circ in circles:
+        #     self.ax.add_patch(circ)
+        self.ax.add_patch(mpl.patches.Circle((100, 100), 50, fc='r', alpha=0.5, picker = 5))
+        self.ax.add_patch(mpl.patches.Rectangle((50, 50), 100, 50, fc='b', alpha = 0.3, picker = 5))
+        self.fig.canvas.mpl_connect('button_press_event', self.on_press)
+        self.fig.canvas.mpl_connect('button_release_event', self.on_release)
+        self.fig.canvas.mpl_connect('pick_event', self.on_pick)
+        self.fig.canvas.mpl_connect('motion_notify_event', self.on_motion)
+        
+        self.poly = mpl_widgets.PolygonSelector(self.ax,
+                                    self.onselect,
+                                    lineprops = dict(color = 'g', alpha = 1),
+                                    markerprops = dict(mec = 'g', mfc = 'g', alpha = 1))
+        self.path = None
+        # dr = beddingManager(circles)
+        self.current_artist = None
+        self.currently_dragging = False
+        plt.show()
+        
+    def onselect(self, verts):
+        path = Path(verts)
+        
+        self.fig.canvas.draw_idle()
+        self.path = path
+        print(path)
+        # self.ax.add_patch(mpl.patches.PathPatch(path, fc = 'g', alpha = 0.3, picker = 5))
+        self.ax.add_patch(mpl.patches.Polygon(np.asarray(self.path.vertices), fc = 'g', alpha = 0.3, picker = 5))
+        
+    def on_press(self, event):
+        pass
+
+    def on_release(self, event):
+        # pass
+        self.currently_dragging = False
+        self.current_artist = None
+
+    def on_pick(self, event):
+        self.currently_dragging = True
+        if self.current_artist is None:
+            self.current_artist = event.artist
+        logger.info("Bedding selected: {}".format(self.current_artist))
+        x1, y1 = event.mouseevent.xdata, event.mouseevent.ydata
+        x0, y0 = x1,y1
+        if self.current_artist.__class__.__name__.lower() == 'circle':
+            x0, y0 = event.artist.center
+        elif  self.current_artist.__class__.__name__.lower() == 'rectangle':
+            x0, y0 = event.artist.xy
+        elif  self.current_artist.__class__.__name__.lower() == 'polygon':
+            x0, y0 = event.artist.xy[0][0], event.artist.xy[0][1]
+                    
+        self.offset = (x0 - x1), (y0 - y1)
+
+    def on_motion(self, event):
+        if not self.currently_dragging:
+            return
+        if self.current_artist is None:
+            return
+        dx, dy = self.offset
+        if self.current_artist.__class__.__name__.lower() == 'circle':
+            self.current_artist.center = event.xdata + dx, event.ydata + dy
+        elif self.current_artist.__class__.__name__.lower() == 'rectangle':
+            self.current_artist.xy = event.xdata + dx, event.ydata + dy
+        elif self.current_artist.__class__.__name__.lower() == 'polygon':
+            new_xy = np.array([])
+            for xy in self.current_artist.xy:
+                xy =  xy + np.array([event.xdata + dx, event.ydata + dy])
+                new_xy = np.vstack((new_xy, xy)) if new_xy.size else xy
+            self.current_artist.set_xy(new_xy)
+            print(self.current_artist.xy)
+        self.current_artist.figure.canvas.draw()
+        
     # Define callback functions
     def define_callback(self):
         self.layout1_widgets[0].clicked.connect(lambda:self.pushbutton_browse_callback(self.layout1_widgets[0]))
@@ -349,9 +482,23 @@ class Form(QMainWindow):
         self.layout13_widgets[2].clicked.connect(lambda:self.pushbutton_remove_callback(self.layout13_widgets[2]))
         self.layout13_widgets[3].clicked.connect(lambda:self.pushbutton_add_callback(self.layout13_widgets[3]))
         
+        # self.fig.canvas.mpl_connect('button_press_event', self.mpl_button_press_callback)
+        # self.fig.canvas.mpl_connect('button_release_event', self.mpl_button_release_callback)
+        # self.fig.canvas.mpl_connect('motion_notify_event', self.mpl_motion_notify_callback)
         # self.layout3_widgets[0].valueChanged.connect(lambda:self.slider_edit_callback(self.layout3_widgets[0]))
         # self.layout3_widgets[1].editingFinished.connect(lambda:self.edit_slider_callback(self.layout3_widgets[1]))
-    # Callbacks
+    # =================================================================================================================
+    # CALLBACKS
+    # def mpl_button_press_callback(self, event):
+    #     print('%s click: button=%d, x=%d, y=%d, xdata=%f, ydata=%f' %
+    #         ('double' if event.dblclick else 'single', event.button,
+    #         event.x, event.y, event.xdata, event.ydata))
+        # art = mpl_patches.Circle([event.xdata, event.ydata], radius = 20, color = 'r', fill = False)
+        # self.ax.add_patch(art)
+        # self.circle.set_center((event.xdata, event.ydata))
+        # self.fig.canvas.draw()
+  
+    
     @log_info
     def pushbutton_browse_callback(self, hObject):
         dlg = QFileDialog(self, 'Select Directory', project_dir)
