@@ -12,6 +12,8 @@ Created on: 2020/01/15
 # IMPORT PACKAGES
 #%%
 from __future__ import print_function
+from IPython.core.debugger import set_trace
+
 import os
 import inspect, sys
 import argparse
@@ -141,46 +143,42 @@ def draw_rectangle(topleft, width, height, ax):
     plt.show()
     return rect
 
-class beddingManager(object):
-    def __init__(self, artists, **kwargs):
-        tolerance = get_varargin(kwargs, 'tolerance', 5)
-        for artist in artists:
-            artist.set_picker(tolerance)
-        self.artists = artists
-        self.currently_dragging = False
-        self.current_artist = None
-        self.offset = (0, 0)
-        # self.fig = fig
-        for canvas in set(artist.figure.canvas for artist in self.artists):
-            print(canvas)
-            canvas.mpl_connect('button_press_event', self.on_press)
-            canvas.mpl_connect('button_release_event', self.on_release)
-            canvas.mpl_connect('pick_event', self.on_pick)
-            canvas.mpl_connect('motion_notify_event', self.on_motion)
+class polygonSelector(object):
+    def __init__(self, ax, bg_img, label_id = 128):
+        self.canvas = ax.figure.canvas
+        # Ensure that we have separate colors for each object
+        self.poly = mpl_widgets.PolygonSelector(ax, self.onselect,
+                                               lineprops = dict(color = 'g', alpha = 1),
+                                                markerprops = dict(mec = 'g', mfc = 'g', alpha = 1))
+        self.label_id = label_id
+        self.bg_img = bg_img
+        self.mask_img = np.zeros_like(self.bg_img)
+        
+    def onselect(self, verts):
+        self.path = Path(verts)
+        self.reset_mask()
+        self.mask_img = self.set_mask_label(self.mask_img, self.path, self.label_id)
+        plt.imshow(self.mask_img, cmap = 'gray_r')
+        self.canvas.draw_idle()
+    
+    def reset_mask(self):
+        self.mask_img = np.zeros_like(self.bg_img)
 
-    def on_press(self, event):
-        print("Bedding selected")
-        self.currently_dragging = True
+    def disconnect(self):
+        self.poly.disconnect_events()
+        self.canvas.draw_idle()
+        
+    @staticmethod
+    def set_mask_label(current_mask, poly_path, label):
+        height, width = current_mask.shape
+        x, y = np.meshgrid(range(width), range(height))
+        coors=np.hstack((x.reshape(-1, 1), y.reshape(-1,1)))
 
-    def on_release(self, event):
-        self.currently_dragging = False
-        self.current_artist = None
-
-    def on_pick(self, event):
-        if self.current_artist is None:
-            self.current_artist = event.artist
-            x0, y0 = event.artist.center
-            x1, y1 = event.mouseevent.xdata, event.mouseevent.ydata
-            self.offset = (x0 - x1), (y0 - y1)
-
-    def on_motion(self, event):
-        if not self.currently_dragging:
-            return
-        if self.current_artist is None:
-            return
-        dx, dy = self.offset
-        self.current_artist.center = event.xdata + dx, event.ydata + dy
-        self.current_artist.figure.canvas.draw()
+        mask = poly_path.contains_points(coors)
+        temp = current_mask.flatten()
+        temp[np.where(mask)] = label
+        updated_mask = temp.reshape(height, width)
+        return updated_mask
         # self.fig.canvas.draw()
 
 def uigridcomp(**kwargs):
@@ -270,8 +268,8 @@ class Form(QMainWindow):
         super().__init__()
         self.setCentralWidget(QWidget(self))
         self.layout1, self.layout1_widgets = uigridcomp(components = ['pushbutton', 'combobox'], 
-                                           icons = [pyIcons.fileIO.open_folder, [pyIcons.fileIO.folder]*2],
-                                           labels = ['Browse...', ['/home/phatluu', project_dir]],                            
+                                           icons = [pyIcons.fileIO.open_folder, [pyIcons.fileIO.folder]*1],
+                                           labels = ['Browse...', [project_dir]],                            
                                            ratios = [20, 80])  
         self.layout2, self.layout2_widgets = uigridcomp(components = ['list'], 
                                            icons = [None],
@@ -339,7 +337,7 @@ class Form(QMainWindow):
     
     def set_main_window(self):
         # Window settings
-        self.setGeometry(4000, 100, 1400, 900)
+        self.setGeometry(2000, 100, 1400, 900)
         self.setWindowTitle("PyGUI Image Log Processing")
         self.setStyleSheet("background-color: palette(window)")
         self.setWindowIcon(QIcon(pyIcons.fileIO.html))
@@ -412,19 +410,20 @@ class Form(QMainWindow):
                                     lineprops = dict(color = 'g', alpha = 1),
                                     markerprops = dict(mec = 'g', mfc = 'g', alpha = 1))
         self.path = None
-        # dr = beddingManager(circles)
+        self.polypatches = None
+        # self.polypatches = mpl.patches.Polygon(np.array([[100, 300],[150, 350],[50, 400],[100, 300]]), fc = 'g', alpha = 0.3, picker = 5)
+        # self.ax.add_patch(mpl.patches.Polygon(np.array([[100, 300],[150, 350],[50, 400],[100, 300]]), fc = 'g', alpha = 0.3, picker = 5))
         self.current_artist = None
         self.currently_dragging = False
         plt.show()
         
     def onselect(self, verts):
         path = Path(verts)
-        
         self.fig.canvas.draw_idle()
-        self.path = path
-        print(path)
-        # self.ax.add_patch(mpl.patches.PathPatch(path, fc = 'g', alpha = 0.3, picker = 5))
-        self.ax.add_patch(mpl.patches.Polygon(np.asarray(self.path.vertices), fc = 'g', alpha = 0.3, picker = 5))
+        # self.path = path
+        # self.ax.add_patch(mpl.patches.Polygon(np.asarray(self.path.vertices), fc = 'g', alpha = 0.5, picker = 5))
+        # self.path.remove()
+        # self.poly.disconnect_events()
         
     def on_press(self, event):
         pass
@@ -447,8 +446,10 @@ class Form(QMainWindow):
             x0, y0 = event.artist.xy
         elif  self.current_artist.__class__.__name__.lower() == 'polygon':
             x0, y0 = event.artist.xy[0][0], event.artist.xy[0][1]
-                    
+        
         self.offset = (x0 - x1), (y0 - y1)
+        print(x0,y0)
+        print(self.offset)
 
     def on_motion(self, event):
         if not self.currently_dragging:
@@ -463,10 +464,10 @@ class Form(QMainWindow):
         elif self.current_artist.__class__.__name__.lower() == 'polygon':
             new_xy = np.array([])
             for xy in self.current_artist.xy:
-                xy =  xy + np.array([event.xdata + dx, event.ydata + dy])
+                displacement =  np.array([event.xdata + dx, event.ydata + dy])
+                xy =  xy - self.current_artist.xy[0] + displacement
                 new_xy = np.vstack((new_xy, xy)) if new_xy.size else xy
-            self.current_artist.set_xy(new_xy)
-            print(self.current_artist.xy)
+            self.current_artist.xy = new_xy
         self.current_artist.figure.canvas.draw()
         
     # Define callback functions
