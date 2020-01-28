@@ -337,7 +337,7 @@ class Form(QMainWindow):
     
     def set_main_window(self):
         # Window settings
-        self.setGeometry(2000, 100, 1400, 900)
+        self.setGeometry(4000, 100, 1400, 900)
         self.setWindowTitle("PyGUI Image Log Processing")
         self.setStyleSheet("background-color: palette(window)")
         self.setWindowIcon(QIcon(pyIcons.fileIO.html))
@@ -409,6 +409,7 @@ class Form(QMainWindow):
                                     self.onselect,
                                     lineprops = dict(color = 'g', alpha = 1),
                                     markerprops = dict(mec = 'g', mfc = 'g', alpha = 1))
+        print(self.ax)
         self.path = None
         self.polypatches = None
         # self.polypatches = mpl.patches.Polygon(np.array([[100, 300],[150, 350],[50, 400],[100, 300]]), fc = 'g', alpha = 0.3, picker = 5)

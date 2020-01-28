@@ -142,11 +142,17 @@ class classExplorer(object):
     
     @property
     def function_members(self):
-        func_members = []
-        for mem in self.members:
-            if inspect.isfunction(mem[1]) or inspect.ismethod(mem[1]):
-                func_members.append(mem)
+        # func_members = []
+        # for mem in self.members:
+        #     if 'function' in str(mem[1]):
+        #         func_members.append(mem)
+        func_members = inspect.getmembers(self.class_name, inspect.isfunction)
         return func_members
+    
+    @property
+    def method_members(self):
+        method_members = inspect.getmembers(self.class_name, inspect.ismethod)
+        return method_members
 
     def list_attrs(self, **kwargs):
         key = get_varargin(kwargs, 'key', 'all')
@@ -163,6 +169,14 @@ class classExplorer(object):
             if not mem[0].startswith('_'):
                 func_names.append(mem[0])
         return self.match_key(func_names, key)
+    
+    def list_method_names(self, **kwargs):
+        key = get_varargin(kwargs, 'key', 'all')
+        names = []
+        for mem in self.method_members:
+            if not mem[0].startswith('_'):
+                names.append(mem[0])
+        return self.match_key(names, key)
         
     def list_private_function_names(self, **kwargs):
         key = get_varargin(kwargs, 'key', 'all')
@@ -174,9 +188,12 @@ class classExplorer(object):
     
     def get_docstring(self, input_name):
         output = ''
-        for mem in self.function_members:
+        for mem in self.members:
             if input_name == mem[0]:
-                output = inspect.getsource(mem[1])
+                try:
+                    output = inspect.getsource(mem[1])
+                except:
+                    pass
         return output
     # STATIC METHODS
     @staticmethod
@@ -257,6 +274,9 @@ def uigridcomp(**kwargs):
         elif comp == 'radio':
             py_comp = QRadioButton(label)
             py_comp.setIcon(QIcon(icon))
+        elif comp == 'checkbox':
+            py_comp = QCheckBox(label)
+            py_comp.setIcon(QIcon(icon))
             
         if not set([comp]).issubset(set(['label'])):
             output_widgets.append(py_comp)
@@ -284,23 +304,39 @@ class mainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setCentralWidget(QWidget(self))
-        self.layout11, self.combobox_module, self.listbox_class = \
+        self.layout11, self.combobox_module, self.listbox_class  = \
             uigridcomp(components = ['combobox', 'list'], 
                        labels = [['PyQt5.QtWidgets', 'matplotlib.widgets', 'matplotlib.patches'], None], 
                        layout = 'vertical',
                        ratios = [30, 70])  
-        self.layout12, self.listbox_class_attrs, self.textedit_docstring = \
-            uigridcomp(components = ['list', 'text'], 
-                       ratios = [30, 70])  
+        self.layout21, self.checkbox_attrs, self.checkbox_methods, self.checkbox_functions  = \
+            uigridcomp(components = ['checkbox', 'checkbox', 'checkbox'], 
+                       labels = ['Attributes', 'Methods', 'Functions'], 
+                       layout = 'vertical',
+                       groupbox = 'Class Members')  
+        
+        self.layout12, self.combobox_find_methods, self.pushbutton_find_methods  = \
+            uigridcomp(components = ['combobox', 'pushbutton'], 
+                       labels = [['get','set', 'index', 'item', 'event','is','selected'], 'Find'], 
+                       icons = [None, pyIcons.action.find],
+                       ratios = [70, 30])  
+        
+        self.layout22,  self.listbox_class_attrs =\
+            uigridcomp(components = ['list']) 
+        
+        self.layout13, self.textedit_docstring = \
+            uigridcomp(components = ['text'])  
+        
         self.set_layout()
         self.define_callback()
-        # self.initialize()
+        self.initialize()
         self.set_main_window()
     
     def set_layout(self):
         main_layout = QHBoxLayout()
         col1_layout = QVBoxLayout()
         col2_layout = QVBoxLayout()
+        col3_layout = QVBoxLayout()
         def add_layouts(current_layout, layout_list, **kwargs):
             nb_comps = len(layout_list)
             ratio_list = get_varargin(kwargs, 'ratios',[np.floor(100/nb_comps)]*nb_comps)
@@ -311,10 +347,11 @@ class mainWindow(QMainWindow):
                 else:
                     current_layout.addLayout(layout, ratio)
                     
-        add_layouts(col1_layout, [self.layout11])
-        add_layouts(col2_layout, [self.layout12])
-        add_layouts(main_layout, [col1_layout, col2_layout], 
-                    ratios = [20, 80])
+        add_layouts(col1_layout, [self.layout11, self.layout21], ratios = [60, 20])
+        add_layouts(col2_layout, [self.layout12, self.layout22], ratios = [20,80])
+        add_layouts(col3_layout, [self.layout13])
+        add_layouts(main_layout, [col1_layout, col2_layout, col3_layout], 
+                    ratios = [20, 30, 50])
         # self.setLayout(main_layout)    
         self.centralWidget().setLayout(main_layout)   
     
@@ -340,14 +377,23 @@ class mainWindow(QMainWindow):
         self.show()
         
     def initialize(self):
-        pass
+        self.explorer = None
+        self.combobox_module_callback(self.combobox_module)
+        self.checkbox_attrs.setChecked(True)
+        self.checkbox_methods.setChecked(True)
+        self.checkbox_functions.setChecked(True)
         
     # Define callback functions
     def define_callback(self):
         self.combobox_module.currentIndexChanged.connect(lambda:self.combobox_module_callback(self.combobox_module))
         self.listbox_class.clicked.connect(lambda:self.listbox_class_clicked_callback(self.listbox_class))
         self.listbox_class_attrs.clicked.connect(lambda:self.listbox_class_attrs_clicked_callback(self.listbox_class_attrs))
+        self.checkbox_attrs.stateChanged.connect(lambda:self.checkbox_class_members_callback(self.checkbox_attrs))
+        self.checkbox_methods.stateChanged.connect(lambda:self.checkbox_class_members_callback(self.checkbox_methods))
+        self.checkbox_functions.stateChanged.connect(lambda:self.checkbox_class_members_callback(self.checkbox_functions))
         
+        self.pushbutton_find_methods.clicked.connect(lambda:self.pushbutton_find_methods_callback(self.pushbutton_find_methods))
+        self.combobox_find_methods.currentIndexChanged.connect(lambda:self.combobox_find_methods_callback(self.combobox_find_methods))
         # self.layout1_widgets[0].clicked.connect(lambda:self.pushbutton_browse_callback(self.layout1_widgets[0]))
         # self.layout1_widgets[1].currentIndexChanged.connect(lambda:self.combobox_browse_callback(self.layout1_widgets[1]))
         # self.layout2_widgets[0].clicked.connect(lambda:self.listbox_browse_clicked_callback(self.layout2_widgets[0]))
@@ -361,8 +407,16 @@ class mainWindow(QMainWindow):
     # =================================================================================================================
     # CALLBACKS    
     @log_info
-    def pushbutton_browse_callback(self, hObject):
-        pass
+    def pushbutton_find_methods_callback(self, hObject):
+        key = self.combobox_find_methods.currentText()
+        full_list = self.full_attrs_list
+        short_list = self.match_key(full_list, key)
+        self.listbox_class_attrs.clear()
+        self.listbox_class_attrs.addItems(short_list)
+    
+    @log_info
+    def combobox_find_methods_callback(self, hObject):
+        self.pushbutton_find_methods_callback(self.pushbutton_find_methods)
     
     @log_info
     def combobox_module_callback(self, hObject):
@@ -378,24 +432,48 @@ class mainWindow(QMainWindow):
         sel_module = self.combobox_module.currentText()
         sel_class = [str(x.text()) for x in hObject.selectedItems()][0]
         class_obj = eval('{}.{}'.format(sel_module, sel_class))
-        obj = classExplorer(class_obj)
-        attrs = obj.list_function_names()
-        self.listbox_class_attrs.addItems(attrs)
-        self.explorer = obj
+        self.explorer = classExplorer(class_obj)
+        self.checkbox_class_members_callback(self.checkbox_attrs)
         
     @log_info
     def listbox_class_attrs_clicked_callback(self, hObject):
         sel_attrs = [str(x.text()) for x in hObject.selectedItems()][0]
-        print(sel_attrs)
         docstr = self.explorer.get_docstring(sel_attrs)
-        print(docstr)
-        print(type(docstr))
         self.textedit_docstring.setText(docstr)
+        
+    @log_info
+    def checkbox_class_members_callback(self, hObject):
+        show_attrs = self.checkbox_attrs.isChecked()
+        show_methods = self.checkbox_methods.isChecked()
+        show_functions = self.checkbox_functions.isChecked()
+        name_list = []
+        if self.explorer is not None:
+            if show_attrs:
+                for item in self.explorer.list_attrs():
+                    name_list.append(item)
+            if show_methods:
+                for item in self.explorer.list_method_names():
+                    name_list.append(item)
+            if show_functions:
+                for item in self.explorer.list_function_names():
+                    name_list.append(item)
+        
+        self.full_attrs_list = name_list
+        self.listbox_class_attrs.clear()
+        self.listbox_class_attrs.addItems(name_list)
+            
         
     
     # =================================================================================================================
     # STATIC METHODS
-    # @staticmethod
+    @staticmethod
+    def match_key(input_list, key):
+        if key == 'all':
+            return input_list
+        else:
+            new_list = [item for item in input_list if key in item.lower()]
+            return new_list
+    
 def main():
     app = QApplication(sys.argv)
     window = mainWindow()

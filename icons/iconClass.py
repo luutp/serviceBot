@@ -62,7 +62,7 @@ class iconClass(object):
         self.action.save = os.path.join(icon_dir, 'Save_16.png')
         self.action.copy = os.path.join(icon_dir, 'Copy_16.png')
         self.action.cut = os.path.join(icon_dir, 'Cut_16.png')        
-        self.action.find = os.path.join(icon_dir, 'find.png')
+        self.action.find = os.path.join(icon_dir, 'Find_16.png')
         self.action.print = os.path.join(icon_dir, 'Print_16.png')
         self.action.download = os.path.join(icon_dir, 'Import_16.png')
         self.action.export = os.path.join(icon_dir, 'Export_16.png')
@@ -73,6 +73,9 @@ class iconClass(object):
         self.action.back = os.path.join(icon_dir, 'Back_16.png')
         self.action.up = os.path.join(icon_dir, 'Up_16.png')
         self.action.down = os.path.join(icon_dir, 'Down_16.png')
+        self.action.confirm = os.path.join(icon_dir, 'confirm.png')
+        self.action.eye_show = os.path.join(icon_dir, 'eye_show.png')
+        self.action.eye_hide = os.path.join(icon_dir, 'eye_hide.png')
         
         self.status = Attribute()
         self.status.spinner = os.path.join(icon_dir, 'Spinner_16.gif')
